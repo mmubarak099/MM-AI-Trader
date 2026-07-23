@@ -26,21 +26,25 @@ export function analyzeMarket(
 
   let score = 50;
 
+  let reasons: string[] = [];
+
 
 
   // Price momentum
 
   if (movement > 0) {
 
-    score += 15;
+  score += 15;
+  reasons.push("Price momentum is positive");
 
-  }
+}
 
-  else if (movement < 0) {
+else if (movement < 0) {
 
-    score -= 15;
+  score -= 15;
+  reasons.push("Price momentum is negative");
 
-  }
+}
 
 
 
@@ -50,16 +54,17 @@ export function analyzeMarket(
 
   if (data.trend === "Bullish") {
 
-    score += 10;
+  score += 10;
+  reasons.push("Trend is bullish");
 
-  }
+}
 
+else if (data.trend === "Bearish") {
 
-  else if (data.trend === "Bearish") {
+  score -= 10;
+  reasons.push("Trend is bearish");
 
-    score -= 10;
-
-  }
+}
 
 
 
@@ -188,13 +193,15 @@ export function analyzeMarket(
 
   return {
 
-    trend,
+  trend,
 
-    confidence: Math.round(score),
+  confidence: Math.round(score),
 
-    action,
+  action,
 
-  };
+  reasons,
+
+};
 
 
 }

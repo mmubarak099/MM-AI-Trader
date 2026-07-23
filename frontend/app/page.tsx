@@ -49,13 +49,15 @@ export default function Home() {
 
   const [aiSignal, setAiSignal] = useState({
 
-    trend: "Neutral",
+  trend: "Neutral",
 
-    confidence: 50,
+  confidence: 50,
 
-    action: "WAIT"
+  action: "WAIT",
 
-  });
+  reasons: [] as string[]
+
+});
 
 
 
@@ -561,14 +563,33 @@ setBankNifty({
 
                 </p>
 
-              </div>
+                          </div>
 
 
+            <div className="mt-6">
+
+              <h4 className="text-lg font-bold">
+                AI Reasoning
+              </h4>
 
 
+              <ul className="mt-3 text-gray-300 space-y-2">
 
+                {aiSignal.reasons.map((reason, index) => (
+
+                  <li key={index}>
+                    ✓ {reason}
+                  </li>
+
+                ))}
+
+              </ul>
 
             </div>
+
+
+          </div>
+            
 
 
 
