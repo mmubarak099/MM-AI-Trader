@@ -47,7 +47,7 @@ export default function Home() {
 
 
 
-  const [aiSignal, setAiSignal] = useState({
+const [aiSignal, setAiSignal] = useState({
 
   trend: "Neutral",
 
@@ -55,7 +55,13 @@ export default function Home() {
 
   action: "WAIT",
 
-  reasons: [] as string[]
+  reasons: [] as string[],
+
+  marketCondition: "Sideways",
+
+  riskLevel: "Medium",
+
+  advice: "Wait for confirmation",
 
 });
 

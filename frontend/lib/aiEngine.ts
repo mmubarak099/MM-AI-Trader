@@ -131,9 +131,15 @@ else if (data.trend === "Bearish") {
 
 
 
-  let trend = "Neutral";
+let trend = "Neutral";
 
-  let action = "WAIT";
+let action = "WAIT";
+
+let marketCondition = "Sideways";
+
+let riskLevel = "Medium";
+
+let advice = "Wait for confirmation";
 
 
 
@@ -187,11 +193,41 @@ else if (data.trend === "Bearish") {
 
   }
 
+  if (score >= 75) {
+
+  marketCondition = "Strong Bullish";
+
+  riskLevel = "Medium";
+
+  advice = "Look for confirmation before entry";
+
+}
+
+else if (score <= 25) {
+
+  marketCondition = "Strong Bearish";
+
+  riskLevel = "High";
+
+  advice = "Avoid long positions";
+
+}
+
+else {
+
+  marketCondition = "Sideways Market";
+
+  riskLevel = "Low";
+
+  advice = "Wait for a clearer setup";
+
+}
 
 
 
 
-  return {
+
+return {
 
   trend,
 
@@ -200,6 +236,12 @@ else if (data.trend === "Bearish") {
   action,
 
   reasons,
+
+  marketCondition,
+
+  riskLevel,
+
+  advice,
 
 };
 
