@@ -33,14 +33,14 @@ export function analyzeMarket(
   if (movement > 0) {
 
   score += 15;
-  reasons.push("Price momentum is positive");
+  reasons.push("Price is gaining momentum compared to the previous candle.");
 
 }
 
 else if (movement < 0) {
 
   score -= 15;
-  reasons.push("Price momentum is negative");
+  reasons.push("Price is losing momentum compared to the previous candle.");
 
 }
 
@@ -53,14 +53,14 @@ else if (movement < 0) {
   if (data.trend === "Bullish") {
 
   score += 10;
-  reasons.push("Trend is bullish");
+  reasons.push("Market trend remains bullish based on moving averages.");
 
 }
 
 else if (data.trend === "Bearish") {
 
   score -= 10;
-  reasons.push("Trend is bearish");
+  reasons.push("Market trend remains bearish based on moving averages.");
 
 }
 
@@ -77,9 +77,10 @@ else if (data.trend === "Bearish") {
 
     if (data.rsi > 70) {
 
-      score -= 15;
+  score -= 15;
+  reasons.push("RSI indicates the market is overbought.");
 
-    }
+}
 
 
 
@@ -87,9 +88,10 @@ else if (data.trend === "Bearish") {
 
     else if (data.rsi < 30) {
 
-      score += 10;
+  score += 10;
+  reasons.push("RSI indicates the market is oversold, increasing reversal potential.");
 
-    }
+}
 
 
   }
@@ -101,20 +103,41 @@ if (data.macd !== null) {
   if (data.macd > 0) {
 
     score += 8;
-    reasons.push("MACD shows bullish momentum");
+    reasons.push("MACD confirms increasing buying momentum.");
 
   }
 
   else if (data.macd < 0) {
 
     score -= 8;
-    reasons.push("MACD shows bearish momentum");
+    reasons.push("MACD confirms increasing selling pressure.");
 
   }
 
 }
 
+// EMA analysis
 
+if (
+  data.ema20 !== null &&
+  data.ema50 !== null
+) {
+
+  if (data.ema20 > data.ema50) {
+
+    score += 12;
+    reasons.push("EMA20 is trading above EMA50, confirming bullish trend.");
+
+  }
+
+  else {
+
+    score -= 12;
+    reasons.push("EMA20 is trading below EMA50, confirming bearish trend.");
+
+  }
+
+}
 
 
 
@@ -123,6 +146,7 @@ if (data.macd !== null) {
   const strength =
     Math.abs(movement);
 
+  
 
 
   if (strength > 20) {
@@ -242,7 +266,35 @@ else {
 }
 
 
+let summary = "";
 
+if (action === "BUY") {
+
+  summary =
+    "The market is showing bullish characteristics with positive momentum. Trend and technical indicators support a potential buying opportunity while maintaining disciplined risk management.";
+
+}
+
+else if (action === "SELL") {
+
+  summary =
+    "The market is showing bearish characteristics with increasing selling pressure. Current technical indicators suggest caution and favor short-selling opportunities.";
+
+}
+
+else if (action === "WATCH") {
+
+  summary =
+    "The market is developing a possible trading setup, but confirmation from additional price action is recommended before entering a position.";
+
+}
+
+else {
+
+  summary =
+    "The market is currently moving sideways with mixed technical signals. Waiting for a clearer opportunity is the recommended approach.";
+
+}
 
 
 return {
@@ -260,6 +312,8 @@ return {
   riskLevel,
 
   advice,
+
+  summary,
 
 };
 

@@ -66,19 +66,15 @@ export function calculateRisk(
 
 
 
-  const risk = Math.abs(
-    entry - stopLoss
-  );
+  const risk = Math.abs(entry - stopLoss);
 
+const reward = Math.abs(target - entry);
 
-  const reward = Math.abs(
-    target - entry
-  );
+let riskReward = 0;
 
-
-
-  const riskReward =
-    reward / risk;
+if (risk > 0) {
+  riskReward = Number((reward / risk).toFixed(2));
+}
 
 
 
@@ -100,9 +96,7 @@ export function calculateRisk(
     ),
 
 
-    riskReward: Number(
-      riskReward.toFixed(2)
-    )
+    riskReward,
 
 
   };

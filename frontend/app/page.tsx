@@ -10,6 +10,7 @@ import MarketCard from "../components/MarketCard";
 import MarketOverview from "../components/MarketOverview";
 import ConfidenceMeter from "../components/ConfidenceMeter";
 import IndicatorPanel from "../components/IndicatorPanel";
+import AIMarketSummary from "../components/AIMarketSummary";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -67,6 +68,8 @@ const [aiSignal, setAiSignal] = useState({
   riskLevel: "Medium",
 
   advice: "Wait for confirmation",
+
+  summary: "",
 
 });
 
@@ -316,6 +319,12 @@ setBankNifty({
   vwap={vwap}
 />
 
+<AIMarketSummary
+  summary={aiSignal.summary}
+  confidence={aiSignal.confidence}
+  action={aiSignal.action}
+/>
+
 
 
 
@@ -504,14 +513,14 @@ setBankNifty({
 
 
                 <p
-  className={`font-bold text-lg ${
+  className={`inline-flex items-center px-4 py-2 rounded-full font-bold text-white ${
     aiSignal.action === "BUY"
-      ? "text-green-400"
+      ? "bg-green-600"
       : aiSignal.action === "SELL"
-      ? "text-red-400"
+      ? "bg-red-600"
       : aiSignal.action === "WATCH"
-      ? "text-blue-400"
-      : "text-yellow-400"
+      ? "bg-blue-600"
+      : "bg-yellow-500 text-black"
   }`}
 >
   {aiSignal.action}
@@ -679,9 +688,18 @@ setBankNifty({
 
                 {aiSignal.reasons.map((reason, index) => (
 
-                  <li key={index}>
-                    ✓ {reason}
-                  </li>
+  <li
+  key={index}
+  className="flex items-start gap-2"
+>
+  <span className="text-green-400">
+    ✔
+  </span>
+
+  <span>
+    {reason}
+  </span>
+</li>
 
                 ))}
 
