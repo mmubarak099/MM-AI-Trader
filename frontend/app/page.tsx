@@ -178,6 +178,7 @@ const vwapValue = calculateVWAP(
   rsi,
   ema20: ema20Value,
   ema50: ema50Value,
+  macd: macdValue,
 });
 
 

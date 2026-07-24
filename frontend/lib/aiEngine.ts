@@ -5,6 +5,7 @@ interface MarketInput {
   rsi: number | null;
   ema20: number | null;
   ema50: number | null;
+  macd: number | null;
 }
 
 
@@ -92,6 +93,26 @@ else if (data.trend === "Bearish") {
 
 
   }
+
+  // MACD analysis
+
+if (data.macd !== null) {
+
+  if (data.macd > 0) {
+
+    score += 8;
+    reasons.push("MACD shows bullish momentum");
+
+  }
+
+  else if (data.macd < 0) {
+
+    score -= 8;
+    reasons.push("MACD shows bearish momentum");
+
+  }
+
+}
 
 
 
