@@ -16,7 +16,8 @@ import { calculateRisk } from "../lib/riskEngine";
 import {
   calculateMovingAverage,
   getTrend,
-  calculateRSI
+  calculateRSI,
+  calculateEMA,
 } from "../lib/indicators";
 
 
@@ -69,6 +70,8 @@ const [aiSignal, setAiSignal] = useState({
 
 
   const [currentRSI, setCurrentRSI] = useState<number | null>(null);
+  const [ema20, setEma20] = useState<number | null>(null);
+  const [ema50, setEma50] = useState<number | null>(null);
 
 
 
@@ -121,6 +124,7 @@ const [aiSignal, setAiSignal] = useState({
           updatedHistory,
           5
         );
+        
 
 
 
@@ -142,22 +146,27 @@ const [aiSignal, setAiSignal] = useState({
           14
         );
 
+        const ema20Value = calculateEMA(
+  updatedHistory,
+  20
+);
+const ema50Value = calculateEMA(
+  updatedHistory,
+  50
+);
 
 
 
 
-      const analysis =
-        analyzeMarket({
 
-          price: newNifty.price,
-
-          previousPrice: nifty.price,
-
-          trend: marketTrend,
-
-          rsi: rsi
-
-        });
+      const analysis = analyzeMarket({
+  price: newNifty.price,
+  previousPrice: nifty.price,
+  trend: marketTrend,
+  rsi,
+  ema20: ema20Value,
+  ema50: ema50Value,
+});
 
 
 
@@ -209,6 +218,8 @@ setBankNifty({
 
 
       setCurrentRSI(rsi);
+      setEma20(ema20Value);
+      setEma50(ema50Value);
 
 
 
@@ -577,6 +588,26 @@ setBankNifty({
                 </p>
 
                           </div>
+                          <div>
+  <p className="text-gray-400">
+    EMA 20
+  </p>
+
+  <p className="text-cyan-400 font-bold">
+    {ema20 ?? "Calculating..."}
+  </p>
+</div>
+<div>
+
+  <p className="text-gray-400">
+    EMA 50
+  </p>
+
+  <p className="text-orange-400 font-bold">
+    {ema50 ?? "Calculating..."}
+  </p>
+
+</div>
 
 
             <div className="mt-6">

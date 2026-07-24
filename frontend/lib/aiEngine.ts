@@ -1,13 +1,10 @@
 interface MarketInput {
-
   price: number;
-
   previousPrice: number;
-
   trend: string;
-
   rsi: number | null;
-
+  ema20: number | null;
+  ema50: number | null;
 }
 
 
