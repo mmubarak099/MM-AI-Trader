@@ -1,9 +1,9 @@
 type IndicatorPanelProps = {
-  rsi: number;
-  ema20: number;
-  ema50: number;
-  macd: number;
-  vwap: number;
+  rsi: number | null;
+  ema20: number | null;
+  ema50: number | null;
+  macd: number | null;
+  vwap: number | null;
 };
 
 export default function IndicatorPanel({
@@ -13,11 +13,18 @@ export default function IndicatorPanel({
   macd,
   vwap,
 }: IndicatorPanelProps) {
-  const getRsiColor = () => {
-    if (rsi >= 70) return "text-red-400";
-    if (rsi <= 30) return "text-green-400";
-    return "text-yellow-400";
-  };
+
+const getRsiColor = () => {
+  if (rsi === null) {
+    return "text-gray-400";
+  }
+
+  if (rsi >= 70) return "text-red-400";
+
+  if (rsi <= 30) return "text-green-400";
+
+  return "text-yellow-400";
+};
 
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 mt-8">
@@ -34,7 +41,7 @@ export default function IndicatorPanel({
           </p>
 
           <p className={`text-2xl font-bold ${getRsiColor()}`}>
-            {rsi.toFixed(1)}
+            {rsi?.toFixed(1) ?? "Calculating..."}
           </p>
         </div>
 
@@ -44,7 +51,7 @@ export default function IndicatorPanel({
           </p>
 
           <p className="text-blue-400 text-2xl font-bold">
-            {ema20.toFixed(2)}
+            {ema20?.toFixed(2) ?? "Calculating..."}
           </p>
         </div>
 
@@ -54,7 +61,7 @@ export default function IndicatorPanel({
           </p>
 
           <p className="text-green-400 text-2xl font-bold">
-            {ema50.toFixed(2)}
+            {ema50?.toFixed(2) ?? "Calculating..."}
           </p>
         </div>
 
@@ -65,10 +72,14 @@ export default function IndicatorPanel({
 
           <p
             className={`text-2xl font-bold ${
-              macd >= 0 ? "text-green-400" : "text-red-400"
-            }`}
+  macd === null
+    ? "text-gray-400"
+    : macd >= 0
+    ? "text-green-400"
+    : "text-red-400"
+}`}
           >
-            {macd.toFixed(2)}
+            {macd?.toFixed(2) ?? "Calculating..."}
           </p>
         </div>
 
@@ -78,7 +89,7 @@ export default function IndicatorPanel({
           </p>
 
           <p className="text-purple-400 text-2xl font-bold">
-            {vwap.toFixed(2)}
+            {vwap?.toFixed(2) ?? "Calculating..."}
           </p>
         </div>
 

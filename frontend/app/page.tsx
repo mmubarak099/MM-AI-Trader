@@ -9,6 +9,7 @@ import MarketStatus from "../components/MarketStatus";
 import MarketCard from "../components/MarketCard";
 import MarketOverview from "../components/MarketOverview";
 import ConfidenceMeter from "../components/ConfidenceMeter";
+import IndicatorPanel from "../components/IndicatorPanel";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -18,6 +19,8 @@ import {
   getTrend,
   calculateRSI,
   calculateEMA,
+  calculateMACD,
+  calculateVWAP,
 } from "../lib/indicators";
 
 
@@ -72,6 +75,8 @@ const [aiSignal, setAiSignal] = useState({
   const [currentRSI, setCurrentRSI] = useState<number | null>(null);
   const [ema20, setEma20] = useState<number | null>(null);
   const [ema50, setEma50] = useState<number | null>(null);
+  const [macd, setMacd] = useState<number | null>(null);
+const [vwap, setVwap] = useState<number | null>(null);
 
 
 
@@ -154,6 +159,13 @@ const ema50Value = calculateEMA(
   updatedHistory,
   50
 );
+const macdValue = calculateMACD(
+  updatedHistory
+);
+
+const vwapValue = calculateVWAP(
+  updatedHistory
+);
 
 
 
@@ -220,6 +232,9 @@ setBankNifty({
       setCurrentRSI(rsi);
       setEma20(ema20Value);
       setEma50(ema50Value);
+      
+      setMacd(macdValue);
+      setVwap(vwapValue);
 
 
 
@@ -292,7 +307,13 @@ setBankNifty({
   bankNiftyChange={bankNifty.change}
 />
 
-
+<IndicatorPanel
+  rsi={currentRSI}
+  ema20={ema20}
+  ema50={ema50}
+  macd={macd}
+  vwap={vwap}
+/>
 
 
 

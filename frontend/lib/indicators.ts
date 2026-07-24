@@ -231,3 +231,17 @@ export function calculateEMA(
 
   return Number(ema.toFixed(2));
 }
+
+export function calculateMACD(
+  prices: number[]
+): number | null {
+
+  const ema12 = calculateEMA(prices, 12);
+  const ema26 = calculateEMA(prices, 26);
+
+  if (ema12 === null || ema26 === null) {
+    return null;
+  }
+
+  return Number((ema12 - ema26).toFixed(2));
+}
