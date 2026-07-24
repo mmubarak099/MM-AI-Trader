@@ -15,6 +15,7 @@ import AIMarketSummary from "../components/AIMarketSummary";
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
 import { calculateRisk } from "../lib/riskEngine";
+import { detectBullishEngulfing } from "../lib/candlestick";
 import {
   calculateMovingAverage,
   getTrend,
@@ -34,6 +35,8 @@ export default function Home() {
     change: 0.52
   });
 
+  const [previousCandle, setPreviousCandle] =
+  useState<any>(null);
 
 
   const [bankNifty, setBankNifty] = useState({
@@ -110,6 +113,28 @@ const [vwap, setVwap] = useState<number | null>(null);
         generateMarketPrice(
           nifty.price
         );
+
+        const currentCandle =
+  newNifty.candle;
+
+  if (previousCandle) {
+
+  const bullishEngulfing =
+    detectBullishEngulfing(
+      previousCandle,
+      currentCandle
+    );
+
+  if (bullishEngulfing) {
+    console.log(
+      "🔥 Bullish Engulfing detected"
+    );
+  }
+
+}
+  
+setPreviousCandle(currentCandle);
+
         const niftyChange =
   ((newNifty.price - 24650) / 24650) * 100;
 
