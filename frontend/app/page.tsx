@@ -8,6 +8,7 @@ import Sidebar from "../components/Sidebar";
 import MarketStatus from "../components/MarketStatus";
 import MarketCard from "../components/MarketCard";
 import MarketOverview from "../components/MarketOverview";
+import ConfidenceMeter from "../components/ConfidenceMeter";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -341,11 +342,9 @@ setBankNifty({
 
 
 
-              <p className="text-yellow-400 text-2xl font-bold mt-2">
-
-                {aiSignal.confidence}%
-
-              </p>
+              <div className="mt-4">
+  <ConfidenceMeter confidence={aiSignal.confidence} />
+</div>
 
 
             </div>
@@ -471,11 +470,19 @@ setBankNifty({
                 </p>
 
 
-                <p className="text-green-400 font-bold">
-
-                  {aiSignal.action}
-
-                </p>
+                <p
+  className={`font-bold text-lg ${
+    aiSignal.action === "BUY"
+      ? "text-green-400"
+      : aiSignal.action === "SELL"
+      ? "text-red-400"
+      : aiSignal.action === "WATCH"
+      ? "text-blue-400"
+      : "text-yellow-400"
+  }`}
+>
+  {aiSignal.action}
+</p>
 
               </div>
 
@@ -573,6 +580,42 @@ setBankNifty({
 
 
             <div className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+  <div>
+    <p className="text-gray-400">
+      Market Condition
+    </p>
+
+    <p className="text-blue-400 font-bold">
+      {aiSignal.marketCondition}
+    </p>
+  </div>
+
+  <div>
+    <p className="text-gray-400">
+      Risk Level
+    </p>
+
+    <p className="text-yellow-400 font-bold">
+      {aiSignal.riskLevel}
+    </p>
+  </div>
+
+
+
+</div>
+<div className="mt-5 p-4 bg-gray-800 rounded-lg border border-blue-500">
+
+  <p className="text-blue-400 font-semibold">
+    💡 AI Advice
+  </p>
+
+  <p className="text-white mt-2">
+    {aiSignal.advice}
+  </p>
+
+</div>
 
               <h4 className="text-lg font-bold">
                 AI Reasoning
