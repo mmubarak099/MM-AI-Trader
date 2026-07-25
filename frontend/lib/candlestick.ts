@@ -16,7 +16,7 @@ export function detectBullishEngulfing(
   currentCandle.close > currentCandle.open;
 
   const bodyEngulfed =
-  currentCandle.open < previousCandle.close &&
+  currentCandle.open <= previousCandle.close &&
   currentCandle.close > previousCandle.open;
 
 return (

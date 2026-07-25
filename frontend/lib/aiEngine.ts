@@ -6,6 +6,8 @@ interface MarketInput {
   ema20: number | null;
   ema50: number | null;
   macd: number | null;
+
+  pattern: string;
 }
 
 
@@ -116,6 +118,21 @@ if (data.macd !== null) {
 
 }
 
+if (data.pattern === "Bullish Engulfing") {
+  score += 15;
+  reasons.push(
+    "Bullish Engulfing pattern indicates a potential bullish reversal."
+  );
+}
+
+if (data.pattern === "Bearish Engulfing") {
+  score -= 15;
+  reasons.push(
+    "Bearish Engulfing pattern indicates a potential bearish reversal."
+  );
+}
+
+
 // EMA analysis
 
 if (
@@ -136,6 +153,18 @@ if (
     reasons.push("EMA20 is trading below EMA50, confirming bearish trend.");
 
   }
+
+}
+
+// Candlestick pattern analysis
+
+if (data.pattern === "Bullish Engulfing") {
+
+  score += 15;
+
+  reasons.push(
+    "Bullish Engulfing pattern detected, indicating potential upward reversal."
+  );
 
 }
 

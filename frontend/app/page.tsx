@@ -16,6 +16,7 @@ import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
 import { calculateRisk } from "../lib/riskEngine";
 import { detectBullishEngulfing } from "../lib/candlestick";
+import { analyzePattern } from "../lib/patternAnalyzer";
 import {
   calculateMovingAverage,
   getTrend,
@@ -54,7 +55,8 @@ export default function Home() {
     24650
   ]);
 
-
+const [pattern, setPattern] =
+  useState("No Pattern");
 
 const [aiSignal, setAiSignal] = useState({
 
@@ -114,26 +116,32 @@ const [vwap, setVwap] = useState<number | null>(null);
           nifty.price
         );
 
-        const currentCandle =
-  newNifty.candle;
+const currentCandle =
+  newNifty.candle;  
 
-  if (previousCandle) {
+    let detectedPattern = "No Pattern";
 
-  const bullishEngulfing =
-    detectBullishEngulfing(
-      previousCandle,
-      currentCandle
-    );
+if (previousCandle) {
 
-  if (bullishEngulfing) {
-    console.log(
-      "🔥 Bullish Engulfing detected"
-    );
+  console.log({
+    previous: previousCandle,
+    current: currentCandle,
+  });
+
+  detectedPattern = analyzePattern(
+    previousCandle,
+    currentCandle
+  );
+
+  if (detectedPattern !== "No Pattern") {
+    console.log(`🔥 ${detectedPattern} detected`);
   }
 
+  setPattern(detectedPattern);
+
 }
-  
-setPreviousCandle(currentCandle);
+
+setPreviousCandle(currentCandle); 
 
         const niftyChange =
   ((newNifty.price - 24650) / 24650) * 100;
@@ -196,7 +204,7 @@ const vwapValue = calculateVWAP(
 );
 
 
-
+console.log("Pattern being sent to AI:", detectedPattern);
 
 
       const analysis = analyzeMarket({
@@ -207,6 +215,8 @@ const vwapValue = calculateVWAP(
   ema20: ema20Value,
   ema50: ema50Value,
   macd: macdValue,
+ pattern: detectedPattern,
+
 });
 
 
@@ -266,6 +276,7 @@ setBankNifty({
       setVwap(vwapValue);
 
 
+console.log("AI Analysis:", analysis);
 
       setAiSignal(analysis);
 
@@ -350,6 +361,21 @@ setBankNifty({
   action={aiSignal.action}
 />
 
+<div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mt-6">
+  <h3 className="text-xl font-bold">
+    Candlestick Pattern
+  </h3>
+
+  <p
+    className={`mt-4 text-2xl font-bold ${
+      pattern === "Bullish Engulfing"
+        ? "text-green-400"
+        : "text-gray-400"
+    }`}
+  >
+    {pattern}
+  </p>
+</div>
 
 
 
