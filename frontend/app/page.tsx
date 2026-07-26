@@ -87,6 +87,12 @@ const [aiSignal, setAiSignal] = useState({
   const [currentRSI, setCurrentRSI] = useState<number | null>(null);
   const [ema20, setEma20] = useState<number | null>(null);
   const [ema50, setEma50] = useState<number | null>(null);
+  const [ema20History, setEma20History] =
+  useState<number[]>([]);
+
+const [ema50History, setEma50History] =
+  useState<number[]>([]);
+
   const [macd, setMacd] = useState<number | null>(null);
 const [vwap, setVwap] = useState<number | null>(null);
 
