@@ -291,6 +291,30 @@ setBankNifty({
       setCurrentRSI(rsi);
       setEma20(ema20Value);
       setEma50(ema50Value);
+
+    if (ema20Value !== null) {
+  setEma20History(prev => {
+    const updated = [...prev, ema20Value];
+
+    if (updated.length > 50) {
+      updated.shift();
+    }
+
+    return updated;
+  });
+}
+
+if (ema50Value !== null) {
+  setEma50History(prev => {
+    const updated = [...prev, ema50Value];
+
+    if (updated.length > 50) {
+      updated.shift();
+    }
+
+    return updated;
+  });
+}
       
       setMacd(macdValue);
       setVwap(vwapValue);
@@ -367,7 +391,11 @@ console.log("AI Analysis:", analysis);
   bankNiftyChange={bankNifty.change}
 />
 
-<CandlestickChart candles={candleHistory} />
+<CandlestickChart
+  candles={candleHistory}
+  ema20={ema20History}
+  ema50={ema50History}
+/>
 
 <IndicatorPanel
   rsi={currentRSI}

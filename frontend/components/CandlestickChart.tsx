@@ -9,10 +9,14 @@ type Candle = {
 
 type Props = {
   candles: Candle[];
+  ema20: number[];
+  ema50: number[];
 };
 
 export default function CandlestickChart({
   candles,
+  ema20,
+  ema50,
 }: Props) {
 
     const maxPrice = Math.max(
@@ -31,6 +35,15 @@ const scale = (price: number) =>
   ((maxPrice - price) /
     (maxPrice - minPrice)) *
   chartHeight + 20;
+
+  const ema20Points = ema20
+  .map((value, index) => {
+    const x = index * 18 + 30;
+    const y = scale(value);
+
+    return `${x},${y}`;
+  })
+  .join(" ");
 
 return (
   <div className="bg-gray-900 rounded-xl p-6">
@@ -80,6 +93,13 @@ return (
   );
 
 })}
+
+<polyline
+  fill="none"
+  stroke="#3b82f6"
+  strokeWidth={2}
+  points={ema20Points}
+/>
       {candles.map((candle, index) => {
 
         const x = index * 18 + 30;
