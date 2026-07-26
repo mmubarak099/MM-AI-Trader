@@ -27,21 +27,26 @@ export function analyzeMarket(
   let score = 50;
 
   let reasons: string[] = [];
+  let trendScore = 0;
+  let momentumScore = 0;
+  let patternScore = 0;
+  let movingAverageScore = 0;
+  let riskScore = 0;
 
 
 
-  // Price momentum
+ // Price momentum
 
-  if (movement > 0) {
+if (movement > 0) {
 
-  score += 15;
+  momentumScore += 15;
   reasons.push("Price is gaining momentum compared to the previous candle.");
 
 }
 
 else if (movement < 0) {
 
-  score -= 15;
+  momentumScore -= 15;
   reasons.push("Price is losing momentum compared to the previous candle.");
 
 }
@@ -52,16 +57,19 @@ else if (movement < 0) {
 
   // Moving average trend
 
-  if (data.trend === "Bullish") {
+if (data.trend === "Bullish") {
 
-  score += 10;
-  reasons.push("Market trend remains bullish based on moving averages.");
+  trendScore += 10;
+
+  reasons.push(
+    "Market trend remains bullish based on moving averages."
+  );
 
 }
 
 else if (data.trend === "Bearish") {
 
-  score -= 10;
+  trendScore -= 10;
   reasons.push("Market trend remains bearish based on moving averages.");
 
 }
@@ -119,16 +127,23 @@ if (data.macd !== null) {
 }
 
 if (data.pattern === "Bullish Engulfing") {
-  score += 15;
+  patternScore += 15;
   reasons.push(
     "Bullish Engulfing pattern indicates a potential bullish reversal."
   );
 }
 
 if (data.pattern === "Bearish Engulfing") {
-  score -= 15;
+  patternScore -= 15;
   reasons.push(
     "Bearish Engulfing pattern indicates a potential bearish reversal."
+  );
+}
+
+if (data.pattern === "Hammer") {
+  patternScore += 12;
+  reasons.push(
+    "Hammer pattern indicates a potential bullish reversal after a decline."
   );
 }
 
@@ -142,14 +157,14 @@ if (
 
   if (data.ema20 > data.ema50) {
 
-    score += 12;
+    movingAverageScore += 12;
     reasons.push("EMA20 is trading above EMA50, confirming bullish trend.");
 
   }
 
   else {
 
-    score -= 12;
+    movingAverageScore -= 12;
     reasons.push("EMA20 is trading below EMA50, confirming bearish trend.");
 
   }

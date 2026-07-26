@@ -17,6 +17,7 @@ import { analyzeMarket } from "../lib/aiEngine";
 import { calculateRisk } from "../lib/riskEngine";
 import { detectBullishEngulfing } from "../lib/candlestick";
 import { analyzePattern } from "../lib/patternAnalyzer";
+import CandlestickChart from "../components/CandlestickChart";
 import {
   calculateMovingAverage,
   getTrend,
@@ -57,6 +58,9 @@ export default function Home() {
 
 const [pattern, setPattern] =
   useState("No Pattern");
+
+  const [candleHistory, setCandleHistory] =
+  useState<any[]>([]);
 
 const [aiSignal, setAiSignal] = useState({
 
@@ -142,6 +146,16 @@ if (previousCandle) {
 }
 
 setPreviousCandle(currentCandle); 
+
+setCandleHistory((prev) => {
+  const updated = [...prev, currentCandle];
+
+  if (updated.length > 50) {
+    updated.shift();
+  }
+
+  return updated;
+});
 
         const niftyChange =
   ((newNifty.price - 24650) / 24650) * 100;
@@ -346,6 +360,8 @@ console.log("AI Analysis:", analysis);
   niftyChange={nifty.change}
   bankNiftyChange={bankNifty.change}
 />
+
+<CandlestickChart candles={candleHistory} />
 
 <IndicatorPanel
   rsi={currentRSI}

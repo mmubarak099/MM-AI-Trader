@@ -11,6 +11,8 @@ export function generateMarketPrice(
   const movement =
     (Math.random() - 0.5) * 50;
 
+    const randomPattern = Math.random();
+
 
   const newPrice =
     basePrice + movement;
@@ -33,6 +35,18 @@ export function generateMarketPrice(
 
 };
 
+// Occasionally generate a Hammer candle (about 5% of the time)
+if (randomPattern < 0.05) {
+
+  candle.open = basePrice;
+
+  candle.close = basePrice + 2;
+
+  candle.high = candle.close + 1;
+
+  candle.low = basePrice - 20;
+
+}
 
   const change =
     ((newPrice - basePrice) / basePrice) * 100;
