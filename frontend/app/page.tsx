@@ -100,12 +100,7 @@ const [signalHistory, setSignalHistory] =
   support: [] as number[],
   resistance: [] as number[],
 
-  const breakout =
-  detectBreakout(
-    newNifty.price,
-    resistance,
-    support
-  );.
+
   
 });
 
@@ -161,6 +156,13 @@ const [marketStructure, setMarketStructure] =
         generateMarketPrice(
           nifty.price
         );
+
+        const breakout =
+  detectBreakout(
+    newNifty.price,
+    levels.resistance,
+    levels.support
+  );
 
 const currentCandle =
   newNifty.candle;  
