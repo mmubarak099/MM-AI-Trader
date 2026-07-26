@@ -82,6 +82,16 @@ const [aiSignal, setAiSignal] = useState({
 
 });
 
+const [signalHistory, setSignalHistory] =
+  useState<
+    {
+      action: string;
+      confidence: number;
+      pattern: string;
+      candleIndex: number;
+    }[]
+  >([]);
+
 
 
   const [currentRSI, setCurrentRSI] = useState<number | null>(null);
@@ -324,6 +334,24 @@ console.log("AI Analysis:", analysis);
 
       setAiSignal(analysis);
 
+      setSignalHistory(prev => {
+  const updated = [
+    ...prev,
+    {
+      action: analysis.action,
+      confidence: analysis.confidence,
+      pattern,
+      candleIndex: candleHistory.length,
+    },
+  ];
+
+  if (updated.length > 50) {
+    updated.shift();
+  }
+
+  return updated;
+});
+
 
 
       setRiskPlan(risk);
@@ -384,153 +412,150 @@ console.log("AI Analysis:", analysis);
 
           </p>
 
-          <MarketOverview
+<MarketOverview
   nifty={nifty.price}
   bankNifty={bankNifty.price}
   niftyChange={nifty.change}
   bankNiftyChange={bankNifty.change}
 />
 
-<CandlestickChart
-  candles={candleHistory}
-  ema20={ema20History}
-  ema50={ema50History}
-/>
+<div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
 
-<IndicatorPanel
-  rsi={currentRSI}
-  ema20={ema20}
-  ema50={ema50}
-  macd={macd}
-  vwap={vwap}
-/>
 
-<AIMarketSummary
-  summary={aiSignal.summary}
-  confidence={aiSignal.confidence}
-  action={aiSignal.action}
-/>
+  {/* ================= LEFT SIDE ================= */}
 
-<div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mt-6">
-  <h3 className="text-xl font-bold">
-    Candlestick Pattern
-  </h3>
+  <div className="xl:col-span-2 space-y-6">
 
-  <p
-    className={`mt-4 text-2xl font-bold ${
-      pattern === "Bullish Engulfing"
-        ? "text-green-400"
-        : "text-gray-400"
-    }`}
-  >
-    {pattern}
-  </p>
+    <CandlestickChart
+      candles={candleHistory}
+      ema20={ema20History}
+      ema50={ema50History}
+      signals={signalHistory}
+    />
+
+    <IndicatorPanel
+      rsi={currentRSI}
+      ema20={ema20}
+      ema50={ema50}
+      macd={macd}
+      vwap={vwap}
+    />
+
+  </div>
+
+  {/* ================= RIGHT SIDE ================= */}
+
+<div className="space-y-6">
+
+  {/* Action */}
+
+  <div className="rounded-lg bg-gray-800 p-4">
+
+    <p className="text-gray-400 text-sm">
+      AI Action
+    </p>
+
+    <p
+      className={`mt-2 text-2xl font-bold ${
+        aiSignal.action === "BUY"
+          ? "text-green-400"
+          : aiSignal.action === "SELL"
+          ? "text-red-400"
+          : "text-yellow-400"
+      }`}
+    >
+      {aiSignal.action}
+    </p>
+
+  </div>
+
+  {/* Trend */}
+
+  <div>
+
+    <p className="text-gray-400">
+      Trend
+    </p>
+
+    <p className="text-blue-400 font-bold text-xl">
+      {aiSignal.trend}
+    </p>
+
+  </div>
+
+  {/* Pattern */}
+
+  <div>
+
+    <p className="text-gray-400">
+      Pattern
+    </p>
+
+    <p className="text-green-400 font-bold">
+      {pattern}
+    </p>
+
+  </div>
+
+  {/* Confidence */}
+
+  <div>
+
+    <p className="text-gray-400 mb-2">
+      Confidence
+    </p>
+
+    <ConfidenceMeter
+      confidence={aiSignal.confidence}
+    />
+
+  </div>
+
+  {/* Market */}
+
+  <div>
+
+    <p className="text-gray-400">
+      Market Condition
+    </p>
+
+    <p className="text-white font-semibold">
+      {aiSignal.marketCondition}
+    </p>
+
+  </div>
+
+  {/* Risk */}
+
+  <div>
+
+    <p className="text-gray-400">
+      Risk Level
+    </p>
+
+    <p className="text-yellow-400 font-bold">
+      {aiSignal.riskLevel}
+    </p>
+
+  </div>
+
+  {/* Advice */}
+
+  <div className="rounded-lg border border-blue-500 bg-gray-800 p-4">
+
+    <p className="text-blue-400 font-semibold">
+      💡 AI Advice
+    </p>
+
+    <p className="mt-2 text-white">
+      {aiSignal.advice}
+    </p>
+
+  </div>
+
 </div>
 
-
-
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
-
-
-
-
-
-            <div className="lg:col-span-2">
-
-              <MarketStatus />
-
-            </div>
-
-
-
-
-
-
-
-            <div className="bg-gray-900 p-5 rounded-xl border border-gray-800">
-
-
-              <h3 className="text-gray-400">
-
-                NIFTY Trend
-
-              </h3>
-
-
-
-              <p className="text-blue-400 text-2xl font-bold mt-2">
-
-                {aiSignal.trend}
-
-              </p>
-
-
-            </div>
-
-
-
-
-
-
-
-            <div className="bg-gray-900 p-5 rounded-xl border border-gray-800">
-
-
-              <h3 className="text-gray-400">
-
-                AI Confidence
-
-              </h3>
-
-
-
-              <div className="mt-4">
-  <ConfidenceMeter confidence={aiSignal.confidence} />
-</div>
-
-
-            </div>
-
-
-
-
-
-
-
-
-            <MarketCard
-
-              name="NIFTY 50"
-
-              price={nifty.price}
-
-              change={nifty.change}
-
-              trend={aiSignal.trend}
-
-            />
-
-
-
-
-
-
-            <MarketCard
-
-              name="BANK NIFTY"
-
-              price={bankNifty.price}
-
-              change={bankNifty.change}
-
-              trend="Strong"
-
-            />
-
-
-
-          </div>
+</div>   // closes xl:grid-cols-3 layout
 
 <div className="mt-8">
   <PriceChart prices={priceHistory} />

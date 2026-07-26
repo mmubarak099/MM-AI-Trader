@@ -1,22 +1,24 @@
 "use client";
 
-type Candle = {
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+type Signal = {
+  action: string;
+  confidence: number;
+  pattern: string;
+  candleIndex: number;
 };
 
 type Props = {
   candles: Candle[];
   ema20: number[];
   ema50: number[];
+  signals: Signal[];
 };
 
 export default function CandlestickChart({
   candles,
   ema20,
   ema50,
+  signals,
 }: Props) {
 
     const maxPrice = Math.max(
@@ -37,6 +39,15 @@ const scale = (price: number) =>
   chartHeight + 20;
 
   const ema20Points = ema20
+  .map((value, index) => {
+    const x = index * 18 + 30;
+    const y = scale(value);
+
+    return `${x},${y}`;
+  })
+  .join(" ");
+
+  const ema50Points = ema50
   .map((value, index) => {
     const x = index * 18 + 30;
     const y = scale(value);
@@ -100,6 +111,50 @@ return (
   strokeWidth={2}
   points={ema20Points}
 />
+<polyline
+  fill="none"
+  stroke="#f59e0b"
+  strokeWidth={2}
+  points={ema50Points}
+/>
+
+{/* AI BUY / SELL MARKERS */}
+
+{signals
+  .filter(
+    signal =>
+      signal.action !== "WAIT" &&
+      signal.confidence >= 90
+  )
+  .map(signal => {
+
+    const x =
+      signal.candleIndex * 18 + 30;
+
+    const candle =
+      candles[signal.candleIndex];
+
+    if (!candle) return null;
+
+    const y =
+      scale(candle.high) - 15;
+
+    return (
+      <text
+        key={signal.candleIndex}
+        x={x}
+        y={y}
+        textAnchor="middle"
+        fontSize="18"
+      >
+        {signal.action === "BUY"
+          ? "🟢"
+          : "🔴"}
+      </text>
+    );
+
+  })}
+
       {candles.map((candle, index) => {
 
         const x = index * 18 + 30;
