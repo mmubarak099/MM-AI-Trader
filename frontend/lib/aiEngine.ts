@@ -8,6 +8,9 @@ interface MarketInput {
   macd: number | null;
 
   pattern: string;
+  support: number[];
+resistance: number[];
+marketStructure: string;
 }
 
 
@@ -32,6 +35,16 @@ export function analyzeMarket(
   let patternScore = 0;
   let movingAverageScore = 0;
   let riskScore = 0;
+
+  const nearestSupport =
+  data.support.length > 0
+    ? Math.max(...data.support)
+    : null;
+
+const nearestResistance =
+  data.resistance.length > 0
+    ? Math.min(...data.resistance)
+    : null;
 
 
 
@@ -74,6 +87,49 @@ else if (data.trend === "Bearish") {
 
 }
 
+if (data.marketStructure === "UPTREND") {
+  score += 15;
+  reasons.push(
+    "Overall market structure is in an uptrend."
+  );
+}
+
+if (data.marketStructure === "DOWNTREND") {
+  score -= 15;
+  reasons.push(
+    "Overall market structure is in a downtrend."
+  );
+}
+
+if (data.marketStructure === "SIDEWAYS") {
+  reasons.push(
+    "Market is ranging with no clear trend."
+  );
+}
+
+// Support & Resistance
+
+if (
+  nearestSupport !== null &&
+  Math.abs(data.price - nearestSupport) <= 15
+) {
+  score += 8;
+
+  reasons.push(
+    "Price is trading near a support zone."
+  );
+}
+
+if (
+  nearestResistance !== null &&
+  Math.abs(data.price - nearestResistance) <= 15
+) {
+  score -= 8;
+
+  reasons.push(
+    "Price is trading near a resistance zone."
+  );
+}
 
 
 

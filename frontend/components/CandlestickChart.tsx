@@ -1,17 +1,21 @@
 "use client";
 
-type Signal = {
-  action: string;
-  confidence: number;
-  pattern: string;
-  candleIndex: number;
-};
+import type {
+  Candle,
+  SignalHistory,
+  PatternHistory,
+  SupportResistance,
+} from "../types/market";
 
 type Props = {
   candles: Candle[];
   ema20: number[];
   ema50: number[];
-  signals: Signal[];
+  signals: SignalHistory[];
+
+patterns: PatternHistory[];
+
+levels: SupportResistance;
 };
 
 export default function CandlestickChart({
@@ -19,6 +23,8 @@ export default function CandlestickChart({
   ema20,
   ema50,
   signals,
+  patterns,
+  levels,
 }: Props) {
 
     const maxPrice = Math.max(
@@ -28,20 +34,43 @@ export default function CandlestickChart({
 const minPrice = Math.min(
   ...candles.map(c => c.low)
 );
+console.log("Max Price:", maxPrice);
+console.log("Min Price:", minPrice);
+console.log("Candles:", candles.length);
+
+const maxVolume = Math.max(
+  ...candles.map(c => c.volume ?? 0),
+  1
+);
+console.log("Chart Debug");
+console.log("Candles:", candles.length);
+console.log("Max Price:", maxPrice);
+console.log("Min Price:", minPrice);
+console.log("Price Difference:", maxPrice - minPrice);
 
 const chartHeight = 380;
 
 const priceLevels = 6;
 
-const scale = (price: number) =>
-  ((maxPrice - price) /
-    (maxPrice - minPrice)) *
-  chartHeight + 20;
+const scale = (price: number) => {
+
+  if (maxPrice === minPrice) {
+    return chartHeight / 2;
+  }
+
+  return (
+    ((maxPrice - price) /
+      (maxPrice - minPrice)) *
+      chartHeight +
+    20
+  );
+};
 
   const ema20Points = ema20
   .map((value, index) => {
     const x = index * 18 + 30;
     const y = scale(value);
+
 
     return `${x},${y}`;
   })
@@ -105,6 +134,78 @@ return (
 
 })}
 
+{/* SUPPORT LEVELS */}
+
+{levels.support.map((price, index) => {
+
+  const y = scale(price);
+
+  return (
+
+    <g key={`support-${index}`}>
+
+      <line
+        x1={45}
+        x2={980}
+        y1={y}
+        y2={y}
+        stroke="#22c55e"
+        strokeWidth={1.5}
+        strokeDasharray="6 4"
+      />
+
+      <text
+        x={985}
+        y={y - 4}
+        fill="#22c55e"
+        fontSize="12"
+        textAnchor="end"
+      >
+        S {price.toFixed(2)}
+      </text>
+
+    </g>
+
+  );
+
+})}
+
+{/* RESISTANCE LEVELS */}
+
+{levels.resistance.map((price, index) => {
+
+  const y = scale(price);
+
+  return (
+
+    <g key={`resistance-${index}`}>
+
+      <line
+        x1={45}
+        x2={980}
+        y1={y}
+        y2={y}
+        stroke="#ef4444"
+        strokeWidth={1.5}
+        strokeDasharray="6 4"
+      />
+
+      <text
+        x={985}
+        y={y - 4}
+        fill="#ef4444"
+        fontSize="12"
+        textAnchor="end"
+      >
+        R {price.toFixed(2)}
+      </text>
+
+    </g>
+
+  );
+
+})}
+
 <polyline
   fill="none"
   stroke="#3b82f6"
@@ -117,6 +218,55 @@ return (
   strokeWidth={2}
   points={ema50Points}
 />
+
+{/* PATTERN MARKERS */}
+
+{patterns.map((pattern, index) => {
+
+  const candle = candles[pattern.candleIndex];
+
+  if (!candle) return null;
+
+  const x = pattern.candleIndex * 18 + 30;
+  const y = scale(candle.high) - 35;
+
+  let icon = "";
+
+  switch (pattern.type) {
+
+    case "Bullish Engulfing":
+      icon = "🟢";
+      break;
+
+    case "Bearish Engulfing":
+      icon = "🔴";
+      break;
+
+    case "Hammer":
+      icon = "🔨";
+      break;
+
+    case "Doji":
+      icon = "⭐";
+      break;
+
+    default:
+      return null;
+  }
+
+  return (
+    <text
+      key={index}
+      x={x}
+      y={y}
+      textAnchor="middle"
+      fontSize="16"
+    >
+      {icon}
+    </text>
+  );
+
+})}
 
 {/* AI BUY / SELL MARKERS */}
 
@@ -170,6 +320,18 @@ const bodyHeight = Math.max(
 
 const bullish = candle.close >= candle.open;
 
+console.log("Candlestick Debug", {
+  index,
+  candle,
+  openY,
+  closeY,
+  bodyTop,
+  bodyHeight,
+  highY: scale(candle.high),
+  lowY: scale(candle.low),
+});
+
+
 return (
   <g key={index}>
 
@@ -194,6 +356,49 @@ return (
 );  
 
       })}
+
+{/* VOLUME BARS */}
+
+{candles.map((candle, index) => {
+
+
+  const x = index * 18 + 30;
+
+const volume = candle.volume ?? 0;
+
+const barHeight =
+  (volume / maxVolume) * 70;
+
+ const safeBarHeight = Number.isFinite(barHeight)
+  ? barHeight
+  : 0;
+
+const y = Math.max(
+  360,
+  430 - safeBarHeight
+);
+
+  console.log("Volume Candle:", candle);
+
+return (
+
+    <rect
+      key={`volume-${index}`}
+      x={x - 4}
+      y={y}
+      width={8}
+      height={safeBarHeight}
+      fill={
+        candle.close >= candle.open
+          ? "#22c55e"
+          : "#ef4444"
+      }
+      opacity={0.6}
+    />
+
+  );
+
+})}
 
     </svg>
     

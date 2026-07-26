@@ -1,9 +1,5 @@
-type Candle = {
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-};
+import type { Candle } from "../types/market";
+
 export function generateMarketPrice(
   basePrice: number
 ) {
@@ -32,6 +28,9 @@ export function generateMarketPrice(
     Math.min(basePrice, newPrice) -
       Math.random() * 10
   ),
+
+  volume:
+    Math.floor(Math.random() * 900) + 100,
 
 };
 

@@ -18,6 +18,8 @@ import { calculateRisk } from "../lib/riskEngine";
 import { detectBullishEngulfing } from "../lib/candlestick";
 import { analyzePattern } from "../lib/patternAnalyzer";
 import CandlestickChart from "../components/CandlestickChart";
+import { detectMarketStructure } from "../lib/marketStructure";
+import { detectBreakout } from "../lib/breakoutDetector";
 import {
   calculateMovingAverage,
   getTrend,
@@ -26,6 +28,8 @@ import {
   calculateMACD,
   calculateVWAP,
 } from "../lib/indicators";
+import { calculateSupportResistance }
+  from "../lib/supportResistance";
 
 
 
@@ -92,6 +96,26 @@ const [signalHistory, setSignalHistory] =
     }[]
   >([]);
 
+  const [levels, setLevels] = useState({
+  support: [] as number[],
+  resistance: [] as number[],
+
+  const breakout =
+  detectBreakout(
+    newNifty.price,
+    resistance,
+    support
+  );.
+  
+});
+
+  const [patternHistory, setPatternHistory] =
+  useState<
+    {
+      type: string;
+      candleIndex: number;
+    }[]
+  >([]);
 
 
   const [currentRSI, setCurrentRSI] = useState<number | null>(null);
@@ -120,6 +144,8 @@ const [vwap, setVwap] = useState<number | null>(null);
 
   });
 
+const [marketStructure, setMarketStructure] =
+  useState("SIDEWAYS");
 
 
 
@@ -164,13 +190,20 @@ if (previousCandle) {
 setPreviousCandle(currentCandle); 
 
 setCandleHistory((prev) => {
+
   const updated = [...prev, currentCandle];
 
   if (updated.length > 50) {
     updated.shift();
   }
 
+  const sr =
+    calculateSupportResistance(updated);
+
+  setLevels(sr);
+
   return updated;
+
 });
 
         const niftyChange =
@@ -185,7 +218,10 @@ setCandleHistory((prev) => {
         newNifty.price
 
       ];
+const structure =
+  detectMarketStructure(updatedHistory);
 
+setMarketStructure(structure);
 
 
 
@@ -246,6 +282,9 @@ console.log("Pattern being sent to AI:", detectedPattern);
   ema50: ema50Value,
   macd: macdValue,
  pattern: detectedPattern,
+   support: levels.support,
+  resistance: levels.resistance,
+  marketStructure: structure,
 
 });
 
@@ -352,6 +391,24 @@ console.log("AI Analysis:", analysis);
   return updated;
 });
 
+if (detectedPattern !== "No Pattern") {
+  setPatternHistory(prev => {
+    const updated = [
+      ...prev,
+      {
+        type: detectedPattern,
+        candleIndex: candleHistory.length,
+      },
+    ];
+
+    if (updated.length > 50) {
+      updated.shift();
+    }
+
+    return updated;
+  });
+}
+
 
 
       setRiskPlan(risk);
@@ -431,6 +488,8 @@ console.log("AI Analysis:", analysis);
       ema20={ema20History}
       ema50={ema50History}
       signals={signalHistory}
+      patterns={patternHistory}
+      levels={levels}
     />
 
     <IndicatorPanel
