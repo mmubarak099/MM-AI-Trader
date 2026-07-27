@@ -11,6 +11,7 @@ import MarketOverview from "../components/MarketOverview";
 import ConfidenceMeter from "../components/ConfidenceMeter";
 import IndicatorPanel from "../components/IndicatorPanel";
 import AIMarketSummary from "../components/AIMarketSummary";
+import TradePlan from "../components/TradePlan";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -20,6 +21,10 @@ import { analyzePattern } from "../lib/patternAnalyzer";
 import CandlestickChart from "../components/CandlestickChart";
 import { detectMarketStructure } from "../lib/marketStructure";
 import { detectBreakout } from "../lib/breakoutDetector";
+import { analyzeVolume } from "../lib/volumeAnalyzer";
+import {
+  createTradePlan,
+} from "../lib/tradePlanner";
 import {
   calculateMovingAverage,
   getTrend,
@@ -60,6 +65,9 @@ export default function Home() {
     24650
   ]);
 
+  const [volumeHistory, setVolumeHistory] =
+  useState<number[]>([]);
+
 const [pattern, setPattern] =
   useState("No Pattern");
 
@@ -96,15 +104,15 @@ const [signalHistory, setSignalHistory] =
     }[]
   >([]);
 
-  const [levels, setLevels] = useState({
+ const [levels, setLevels] = useState({
   support: [] as number[],
   resistance: [] as number[],
-
-
-  
 });
 
-  const [patternHistory, setPatternHistory] =
+const [tradePlan, setTradePlan] =
+  useState<any>(null);
+
+const [patternHistory, setPatternHistory] =
   useState<
     {
       type: string;
@@ -208,6 +216,27 @@ setCandleHistory((prev) => {
 
 });
 
+setVolumeHistory(prev => {
+
+  const updated = [
+    ...prev,
+    currentCandle.volume,
+  ];
+
+  if (updated.length > 50) {
+    updated.shift();
+  }
+
+  return updated;
+
+});
+
+const volumeStrength =
+  analyzeVolume([
+    ...volumeHistory,
+    currentCandle.volume,
+  ]);
+
         const niftyChange =
   ((newNifty.price - 24650) / 24650) * 100;
 
@@ -287,12 +316,20 @@ console.log("Pattern being sent to AI:", detectedPattern);
    support: levels.support,
   resistance: levels.resistance,
   marketStructure: structure,
+  breakout,
+  volumeStrength,
 
 });
 
+const plan = createTradePlan(
+  analysis.action,
+  newNifty.price,
+  analysis.confidence
+);
 
+setTradePlan(plan);
 
-
+console.log("Trade Plan:", plan);
 
       const risk =
         calculateRisk({
@@ -507,6 +544,18 @@ if (detectedPattern !== "No Pattern") {
   {/* ================= RIGHT SIDE ================= */}
 
 <div className="space-y-6">
+
+  <MarketStatus />
+
+  {tradePlan && (
+    <TradePlan
+      plan={tradePlan}
+    />
+  )}
+
+  <AIMarketSummary
+    signal={aiSignal}
+  />
 
   {/* Action */}
 

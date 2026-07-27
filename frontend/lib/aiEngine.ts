@@ -11,6 +11,8 @@ interface MarketInput {
   support: number[];
 resistance: number[];
 marketStructure: string;
+breakout: string;
+volumeStrength: string;
 }
 
 
@@ -35,6 +37,7 @@ export function analyzeMarket(
   let patternScore = 0;
   let movingAverageScore = 0;
   let riskScore = 0;
+  let tradeQuality = "C";
 
   const nearestSupport =
   data.support.length > 0
@@ -46,7 +49,77 @@ const nearestResistance =
     ? Math.min(...data.resistance)
     : null;
 
+    if (score >= 90) {
 
+  tradeQuality = "A+";
+
+} else if (score >= 80) {
+
+  tradeQuality = "A";
+
+} else if (score >= 70) {
+
+  tradeQuality = "B";
+
+} else {
+
+  tradeQuality = "C";
+
+}
+
+// ===============================
+// AI Confluence Bonus
+// ===============================
+
+let confirmations = 0;
+
+if (data.breakout === "BREAKOUT") confirmations++;
+if (data.volumeStrength === "HIGH") confirmations++;
+if (data.trend === "Bullish") confirmations++;
+if (
+  data.rsi !== null &&
+  data.rsi > 50 &&
+  data.rsi < 70
+) confirmations++;
+if (data.pattern !== "NONE") confirmations++;
+
+if (confirmations >= 4) {
+
+  score += 15;
+
+  reasons.push(
+    "Multiple bullish confirmations align."
+  );
+
+}
+
+// ===============================
+// Bearish Confluence
+// ===============================
+
+let bearishConfirmations = 0;
+
+if (data.breakout === "BREAKDOWN") bearishConfirmations++;
+if (data.volumeStrength === "HIGH") bearishConfirmations++;
+if (data.trend === "Bearish") bearishConfirmations++;
+if (
+  data.rsi !== null &&
+  data.rsi < 50
+) bearishConfirmations++;
+
+if (
+  data.pattern === "BEARISH_ENGULFING"
+) bearishConfirmations++;
+
+if (bearishConfirmations >= 4) {
+
+  score -= 15;
+
+  reasons.push(
+    "Multiple bearish confirmations align."
+  );
+
+}
 
  // Price momentum
 
@@ -131,7 +204,83 @@ if (
   );
 }
 
+// Breakout / Breakdown
 
+if (data.breakout === "BREAKOUT") {
+
+  score += 20;
+
+  reasons.push(
+    "Price has broken above resistance."
+  );
+
+}
+
+if (data.breakout === "BREAKDOWN") {
+
+  score -= 20;
+
+  reasons.push(
+    "Price has broken below support."
+  );
+
+}
+
+// ===============================
+// Volume Confirmation
+// ===============================
+
+if (
+  data.breakout === "BREAKOUT" &&
+  data.volumeStrength === "HIGH"
+) {
+
+  score += 12;
+
+  reasons.push(
+    "High trading volume confirms the breakout."
+  );
+
+}
+
+if (
+  data.breakout === "BREAKDOWN" &&
+  data.volumeStrength === "HIGH"
+) {
+
+  score -= 12;
+
+  reasons.push(
+    "High selling volume confirms the breakdown."
+  );
+
+}
+
+if (
+  data.breakout === "BREAKOUT" &&
+  data.volumeStrength === "LOW"
+) {
+
+  score -= 8;
+
+  reasons.push(
+    "Breakout has weak volume confirmation."
+  );
+
+}
+
+if (
+  data.breakout === "BREAKDOWN" &&
+  data.volumeStrength === "LOW"
+) {
+
+  score += 8;
+
+  reasons.push(
+    "Breakdown has weak selling volume."
+  );
+
+}
 
 
   // RSI analysis

@@ -5,31 +5,25 @@ import { useEffect, useState } from "react";
 
 export default function MarketStatus() {
 
-  const [time, setTime] = useState<Date | null>(null);
+ const [time, setTime] = useState(new Date());
 
 
   useEffect(() => {
 
-    const timer = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
+  // Set the time immediately when the component loads
+  setTime(new Date());
 
+  // Then update it every second
+  const timer = setInterval(() => {
+    setTime(new Date());
+  }, 1000);
 
-    return () => clearInterval(timer);
+  return () => clearInterval(timer);
 
-  }, []);
+}, []);
 
 
   // Convert to Indian Standard Time
-
-  if (!time) {
-  return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 min-h-[220px]">
-      Loading market status...
-    </div>
-  );
-}
-
 
 const indiaTime = new Date(
   time.toLocaleString("en-US", {
@@ -59,20 +53,21 @@ const indiaTime = new Date(
   }
 
   else if (
-    (hours === 9 && minutes >= 0) ||
-    (hours === 10 && minutes < 15)
-  ) {
+  hours === 9 &&
+  minutes < 15
+) {
 
-    status = "🟡 PRE-OPEN SESSION";
-    color = "text-yellow-400";
-    session = "Opening session";
+  status = "🟡 PRE-OPEN SESSION";
+  color = "text-yellow-400";
+  session = "Opening Session";
 
-  }
+}
 
   else if (
-    (hours > 9 || (hours === 9 && minutes >= 15)) &&
-    (hours < 15 || (hours === 15 && minutes <= 30))
-  ) {
+  (hours > 9 || (hours === 9 && minutes >= 15)) &&
+  (hours < 15 || (hours === 15 && minutes < 30))
+)
+   {
 
     status = "🟢 LIVE TRADING";
     color = "text-green-400";

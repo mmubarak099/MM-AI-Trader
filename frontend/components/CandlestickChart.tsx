@@ -27,6 +27,19 @@ export default function CandlestickChart({
   levels,
 }: Props) {
 
+  if (candles.length === 0) {
+  return (
+    <div className="bg-gray-900 rounded-xl p-6">
+      <h2 className="text-2xl font-bold mb-4">
+        Candlestick Chart
+      </h2>
+
+      <p className="text-gray-400">
+        Waiting for market data...
+      </p>
+    </div>
+  );
+}
     const maxPrice = Math.max(
   ...candles.map(c => c.high)
 );
@@ -42,11 +55,7 @@ const maxVolume = Math.max(
   ...candles.map(c => c.volume ?? 0),
   1
 );
-console.log("Chart Debug");
-console.log("Candles:", candles.length);
-console.log("Max Price:", maxPrice);
-console.log("Min Price:", minPrice);
-console.log("Price Difference:", maxPrice - minPrice);
+
 
 const chartHeight = 380;
 
@@ -54,16 +63,18 @@ const priceLevels = 6;
 
 const scale = (price: number) => {
 
-  if (maxPrice === minPrice) {
+  const range = maxPrice - minPrice;
+
+  if (!Number.isFinite(range) || range <= 0) {
     return chartHeight / 2;
   }
 
   return (
-    ((maxPrice - price) /
-      (maxPrice - minPrice)) *
+    ((maxPrice - price) / range) *
       chartHeight +
     20
   );
+
 };
 
   const ema20Points = ema20
@@ -320,17 +331,6 @@ const bodyHeight = Math.max(
 
 const bullish = candle.close >= candle.open;
 
-console.log("Candlestick Debug", {
-  index,
-  candle,
-  openY,
-  closeY,
-  bodyTop,
-  bodyHeight,
-  highY: scale(candle.high),
-  lowY: scale(candle.low),
-});
-
 
 return (
   <g key={index}>
@@ -378,7 +378,6 @@ const y = Math.max(
   430 - safeBarHeight
 );
 
-  console.log("Volume Candle:", candle);
 
 return (
 
