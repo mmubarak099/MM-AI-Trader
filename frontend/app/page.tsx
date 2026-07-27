@@ -12,6 +12,8 @@ import ConfidenceMeter from "../components/ConfidenceMeter";
 import IndicatorPanel from "../components/IndicatorPanel";
 import AIMarketSummary from "../components/AIMarketSummary";
 import TradePlan from "../components/TradePlan";
+import AIDecisionPanel from "../components/AIDecisionPanel";
+import ActiveTradeMonitor from "../components/ActiveTradeMonitor";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -22,6 +24,11 @@ import CandlestickChart from "../components/CandlestickChart";
 import { detectMarketStructure } from "../lib/marketStructure";
 import { detectBreakout } from "../lib/breakoutDetector";
 import { analyzeVolume } from "../lib/volumeAnalyzer";
+import { updateTrade } from "../lib/tradeManager";
+import {
+  getSignalExpiry,
+  isSignalExpired,
+} from "../lib/signalExpiry";
 import {
   createTradePlan,
 } from "../lib/tradePlanner";
@@ -111,6 +118,13 @@ const [signalHistory, setSignalHistory] =
 
 const [tradePlan, setTradePlan] =
   useState<any>(null);
+const [activeTrade, setActiveTrade] =
+  useState<any>(null);
+const [tradeHistory, setTradeHistory] =
+  useState<any[]>([]);
+
+  const [signalExpiry, setSignalExpiry] =
+  useState<Date | null>(null);
 
 const [patternHistory, setPatternHistory] =
   useState<
@@ -327,9 +341,65 @@ const plan = createTradePlan(
   analysis.confidence
 );
 
-setTradePlan(plan);
+if (!tradePlan) {
 
-console.log("Trade Plan:", plan);
+  setTradePlan(plan);
+
+  console.log(
+    "New Trade Created:",
+    plan
+  );
+
+}
+
+if (
+  !activeTrade &&
+  (analysis.action === "BUY" ||
+    analysis.action === "SELL")
+) {
+
+setActiveTrade({
+
+  ...plan,
+
+  status: "ACTIVE",
+
+});
+
+}
+
+if (activeTrade) {
+
+  const updatedTrade =
+    updateTrade(
+      activeTrade,
+      newNifty.price
+    );
+
+  setActiveTrade(updatedTrade);
+
+  if (updatedTrade.status === "CLOSED") {
+
+    setTradeHistory(prev => [
+      ...prev,
+      updatedTrade,
+    ]);
+
+    setActiveTrade(null);
+
+  }
+
+}
+
+// Create expiry only for BUY / SELL signals
+if (
+  analysis.action === "BUY" ||
+  analysis.action === "SELL"
+) {
+  setSignalExpiry(getSignalExpiry());
+} else {
+  setSignalExpiry(null);
+}
 
       const risk =
         calculateRisk({
@@ -465,7 +535,12 @@ if (detectedPattern !== "No Pattern") {
 
 
 
-  }, [nifty, bankNifty, priceHistory]);
+  }, [
+  nifty,
+  bankNifty,
+  priceHistory,
+  activeTrade,
+]);
 
 
 
@@ -550,118 +625,21 @@ if (detectedPattern !== "No Pattern") {
   {tradePlan && (
     <TradePlan
       plan={tradePlan}
+      expiry={signalExpiry}
+    />
+  )}
+
+  {activeTrade && (
+    <ActiveTradeMonitor
+      trade={activeTrade}
     />
   )}
 
   <AIMarketSummary
-    signal={aiSignal}
+    summary={aiSignal.summary}
+    confidence={aiSignal.confidence}
+    action={aiSignal.action}
   />
-
-  {/* Action */}
-
-  <div className="rounded-lg bg-gray-800 p-4">
-
-    <p className="text-gray-400 text-sm">
-      AI Action
-    </p>
-
-    <p
-      className={`mt-2 text-2xl font-bold ${
-        aiSignal.action === "BUY"
-          ? "text-green-400"
-          : aiSignal.action === "SELL"
-          ? "text-red-400"
-          : "text-yellow-400"
-      }`}
-    >
-      {aiSignal.action}
-    </p>
-
-  </div>
-
-  {/* Trend */}
-
-  <div>
-
-    <p className="text-gray-400">
-      Trend
-    </p>
-
-    <p className="text-blue-400 font-bold text-xl">
-      {aiSignal.trend}
-    </p>
-
-  </div>
-
-  {/* Pattern */}
-
-  <div>
-
-    <p className="text-gray-400">
-      Pattern
-    </p>
-
-    <p className="text-green-400 font-bold">
-      {pattern}
-    </p>
-
-  </div>
-
-  {/* Confidence */}
-
-  <div>
-
-    <p className="text-gray-400 mb-2">
-      Confidence
-    </p>
-
-    <ConfidenceMeter
-      confidence={aiSignal.confidence}
-    />
-
-  </div>
-
-  {/* Market */}
-
-  <div>
-
-    <p className="text-gray-400">
-      Market Condition
-    </p>
-
-    <p className="text-white font-semibold">
-      {aiSignal.marketCondition}
-    </p>
-
-  </div>
-
-  {/* Risk */}
-
-  <div>
-
-    <p className="text-gray-400">
-      Risk Level
-    </p>
-
-    <p className="text-yellow-400 font-bold">
-      {aiSignal.riskLevel}
-    </p>
-
-  </div>
-
-  {/* Advice */}
-
-  <div className="rounded-lg border border-blue-500 bg-gray-800 p-4">
-
-    <p className="text-blue-400 font-semibold">
-      💡 AI Advice
-    </p>
-
-    <p className="mt-2 text-white">
-      {aiSignal.advice}
-    </p>
-
-  </div>
 
 </div>
 
@@ -670,6 +648,14 @@ if (detectedPattern !== "No Pattern") {
 <div className="mt-8">
   <PriceChart prices={priceHistory} />
 </div>  
+<div className="mt-8">
+
+  <AIDecisionPanel
+    signal={aiSignal}
+    pattern={pattern}
+  />
+
+</div>
 
 <div className="mt-8 bg-gray-900 p-6 rounded-xl border border-gray-800">
 
@@ -732,12 +718,6 @@ if (detectedPattern !== "No Pattern") {
                 </p>
 
               </div>
-
-
-
-
-
-
 
               <div>
 

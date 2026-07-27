@@ -1,3 +1,5 @@
+import type { Trade } from "../types/trade";
+
 export type TradePlan = {
   action: string;
 
@@ -18,7 +20,7 @@ export function createTradePlan(
   action: string,
   price: number,
   confidence: number
-): TradePlan {
+): Trade {
 
   if (action === "BUY") {
 
@@ -36,26 +38,38 @@ export function createTradePlan(
       (price + 120).toFixed(2)
     );
 
-    return {
+return {
 
-      action,
+  id: crypto.randomUUID(),
 
-      entry,
+  action: "BUY",
 
-      stopLoss,
+  entry,
 
-      target1,
+  stopLoss,
 
-      target2,
+  target1,
 
-      riskReward: "1 : 3",
+  target2,
 
-      urgency:
-        confidence >= 90
-          ? "HIGH"
-          : "MEDIUM",
+  currentPrice: entry,
 
-    };
+  pnl: 0,
+
+  confidence,
+
+  urgency:
+    confidence >= 90
+      ? "HIGH"
+      : "MEDIUM",
+
+  openedAt: new Date(),
+
+  status: "PENDING",
+
+  result: "NONE",
+
+};
 
   }
 
@@ -75,45 +89,69 @@ export function createTradePlan(
       (price - 120).toFixed(2)
     );
 
-    return {
+  return {
 
-      action,
+  id: crypto.randomUUID(),
 
-      entry,
+  action: "SELL",
 
-      stopLoss,
+  entry,
 
-      target1,
+  stopLoss,
 
-      target2,
+  target1,
 
-      riskReward: "1 : 3",
+  target2,
 
-      urgency:
-        confidence >= 90
-          ? "HIGH"
-          : "MEDIUM",
+  currentPrice: entry,
 
-    };
+  pnl: 0,
+
+  confidence,
+
+  urgency:
+    confidence >= 90
+      ? "HIGH"
+      : "MEDIUM",
+
+  openedAt: new Date(),
+
+  status: "PENDING",
+
+  result: "NONE",
+
+};
 
   }
 
-  return {
+ return {
 
-    action: "WAIT",
+  id: crypto.randomUUID(),
 
-    entry: price,
+  action: "BUY",
 
-    stopLoss: price,
+  entry: price,
 
-    target1: price,
+  stopLoss: price,
 
-    target2: price,
+  target1: price,
 
-    riskReward: "-",
+  target2: price,
 
-    urgency: "LOW",
+  currentPrice: price,
 
-  };
+  pnl: 0,
+
+  confidence,
+
+  urgency: "LOW",
+
+  openedAt: new Date(),
+
+  status: "PENDING",
+
+  result: "NONE",
+
+};
 
 }

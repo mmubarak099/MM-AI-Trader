@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 export default function MarketStatus() {
 
- const [time, setTime] = useState(new Date());
+ const [time, setTime] = useState<Date | null>(null);
 
 
   useEffect(() => {
@@ -25,15 +25,17 @@ export default function MarketStatus() {
 
   // Convert to Indian Standard Time
 
-const indiaTime = new Date(
-  time.toLocaleString("en-US", {
-    timeZone: "Asia/Kolkata",
-  })
-);
+const indiaTime = time
+  ? new Date(
+      time.toLocaleString("en-US", {
+        timeZone: "Asia/Kolkata",
+      })
+    )
+  : null;
 
 
-  const hours = indiaTime.getHours();
-  const minutes = indiaTime.getMinutes();
+  const hours = indiaTime ? indiaTime.getHours() : 0;
+  const minutes = indiaTime ? indiaTime.getMinutes() : 0;
 
 
   let status = "";
@@ -104,7 +106,7 @@ const indiaTime = new Date(
         <p>
           Current Time:
           <span className="ml-2 font-bold text-white">
-            {indiaTime.toLocaleTimeString()}
+            {indiaTime ? indiaTime.toLocaleTimeString() : ""}
           </span>
         </p>
 

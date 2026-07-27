@@ -1,9 +1,59 @@
+import { useEffect, useState } from "react";
+
 type Props = {
   plan: any;
+  expiry: Date | null;
 };
 
-export default function TradePlan({ plan }: Props) {
+export default function TradePlan({
+  plan,
+  expiry,
+}: Props) {
+
   if (!plan) return null;
+  const [remaining, setRemaining] =
+  useState("");
+
+  useEffect(() => {
+
+  if (!expiry) {
+    setRemaining("-");
+    return;
+  }
+
+  const updateCountdown = () => {
+
+    const diff =
+      expiry.getTime() - Date.now();
+
+    if (diff <= 0) {
+
+      setRemaining("Expired");
+
+      return;
+
+    }
+
+    const minutes =
+      Math.floor(diff / 60000);
+
+    const seconds =
+      Math.floor((diff % 60000) / 1000);
+
+    setRemaining(
+      `${minutes}m ${seconds}s`
+    );
+
+  };
+
+  updateCountdown();
+
+  const timer =
+    setInterval(updateCountdown, 1000);
+
+  return () => clearInterval(timer);
+
+}, [expiry]);
 
   return (
     <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
@@ -47,7 +97,37 @@ export default function TradePlan({ plan }: Props) {
           <p className="text-gray-400">Urgency</p>
           <p>{plan.urgency}</p>
         </div>
+<div>
 
+  <p className="text-gray-400">
+    Signal Status
+  </p>
+
+  <p
+    className={
+      remaining === "Expired"
+        ? "text-red-400 font-bold"
+        : "text-green-400 font-bold"
+    }
+  >
+    {remaining === "Expired"
+      ? "Expired"
+      : "Valid"}
+  </p>
+
+</div>
+
+<div>
+
+  <p className="text-gray-400">
+    Time Remaining
+  </p>
+
+  <p className="font-bold">
+    {remaining}
+  </p>
+
+</div>
       </div>
     </div>
   );
