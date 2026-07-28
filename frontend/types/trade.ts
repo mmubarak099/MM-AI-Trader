@@ -1,6 +1,11 @@
+export type TradeAction =
+  | "BUY"
+  | "SELL";
+
 export type TradeStatus =
   | "PENDING"
   | "ACTIVE"
+  | "TARGET 1 HIT"
   | "CLOSED";
 
 export type TradeResult =
@@ -8,13 +13,20 @@ export type TradeResult =
   | "LOSS"
   | "NONE";
 
+export type TradeUrgency =
+  | "LOW"
+  | "MEDIUM"
+  | "HIGH";
+
 export interface Trade {
 
   id: string;
 
-  action: "BUY" | "SELL";
+  action: TradeAction;
 
   entry: number;
+
+  currentPrice: number;
 
   stopLoss: number;
 
@@ -22,20 +34,22 @@ export interface Trade {
 
   target2: number;
 
-  currentPrice: number;
-
   pnl: number;
 
   confidence: number;
 
-  urgency: string;
-
-  openedAt: Date;
-
-  closedAt?: Date;
+  urgency: TradeUrgency;
 
   status: TradeStatus;
 
   result: TradeResult;
+
+  openedAt?: Date;
+
+  closedAt?: Date;
+
+  target1Hit: boolean;
+
+target2Hit: boolean;
 
 }

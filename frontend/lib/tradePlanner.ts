@@ -1,157 +1,73 @@
-import type { Trade } from "../types/trade";
+  import type { Trade } from "../types/trade";
 
-export type TradePlan = {
-  action: string;
+  export function createTradePlan(
+    action: string,
+    price: number,
+    confidence: number
+  ): Trade | null {
 
-  entry: number;
+    if (
+      action !== "BUY" &&
+      action !== "SELL"
+    ) {
+      return null;
+    }
 
-  stopLoss: number;
+    const isBuy = action === "BUY";
 
-  target1: number;
+    return {
 
-  target2: number;
+      id: crypto.randomUUID(),
 
-  riskReward: string;
+      action,
 
-  urgency: string;
-};
+      entry: price,
 
-export function createTradePlan(
-  action: string,
-  price: number,
-  confidence: number
-): Trade {
+      currentPrice: price,
 
-  if (action === "BUY") {
+      stopLoss: Number(
+        (
+          isBuy
+            ? price - 40
+            : price + 40
+        ).toFixed(2)
+      ),
 
-    const entry = price;
+      target1: Number(
+        (
+          isBuy
+            ? price + 60
+            : price - 60
+        ).toFixed(2)
+      ),
 
-    const stopLoss = Number(
-      (price - 40).toFixed(2)
-    );
+      target2: Number(
+        (
+          isBuy
+            ? price + 120
+            : price - 120
+        ).toFixed(2)
+      ),
 
-    const target1 = Number(
-      (price + 60).toFixed(2)
-    );
+      pnl: 0,
 
-    const target2 = Number(
-      (price + 120).toFixed(2)
-    );
+      confidence,
 
-return {
+      urgency:
+        confidence >= 90
+          ? "HIGH"
+          : confidence >= 75
+          ? "MEDIUM"
+          : "LOW",
 
-  id: crypto.randomUUID(),
+      status: "PENDING",
 
-  action: "BUY",
+      result: "NONE",
 
-  entry,
+      target1Hit: false,
 
-  stopLoss,
+      target2Hit: false,
 
-  target1,
-
-  target2,
-
-  currentPrice: entry,
-
-  pnl: 0,
-
-  confidence,
-
-  urgency:
-    confidence >= 90
-      ? "HIGH"
-      : "MEDIUM",
-
-  openedAt: new Date(),
-
-  status: "PENDING",
-
-  result: "NONE",
-
-};
-
-  }
-
-  if (action === "SELL") {
-
-    const entry = price;
-
-    const stopLoss = Number(
-      (price + 40).toFixed(2)
-    );
-
-    const target1 = Number(
-      (price - 60).toFixed(2)
-    );
-
-    const target2 = Number(
-      (price - 120).toFixed(2)
-    );
-
-  return {
-
-  id: crypto.randomUUID(),
-
-  action: "SELL",
-
-  entry,
-
-  stopLoss,
-
-  target1,
-
-  target2,
-
-  currentPrice: entry,
-
-  pnl: 0,
-
-  confidence,
-
-  urgency:
-    confidence >= 90
-      ? "HIGH"
-      : "MEDIUM",
-
-  openedAt: new Date(),
-
-  status: "PENDING",
-
-  result: "NONE",
-
-};
+    };
 
   }
-
- return {
-
-  id: crypto.randomUUID(),
-
-  action: "BUY",
-
-  entry: price,
-
-  stopLoss: price,
-
-  target1: price,
-
-  target2: price,
-
-  currentPrice: price,
-
-  pnl: 0,
-
-  confidence,
-
-  urgency: "LOW",
-
-  openedAt: new Date(),
-
-  status: "PENDING",
-
-  result: "NONE",
-
-};
-
-}

@@ -24,7 +24,10 @@ import CandlestickChart from "../components/CandlestickChart";
 import { detectMarketStructure } from "../lib/marketStructure";
 import { detectBreakout } from "../lib/breakoutDetector";
 import { analyzeVolume } from "../lib/volumeAnalyzer";
-import { updateTrade } from "../lib/tradeManager";
+import {
+  activateTrade,
+  updateTrade,
+} from "../lib/tradeManager";
 import {
   getSignalExpiry,
   isSignalExpired,
@@ -126,6 +129,9 @@ const [tradeHistory, setTradeHistory] =
   const [signalExpiry, setSignalExpiry] =
   useState<Date | null>(null);
 
+  const [lastSignal, setLastSignal] =
+  useState<string>("NONE");
+
 const [patternHistory, setPatternHistory] =
   useState<
     {
@@ -164,8 +170,60 @@ const [vwap, setVwap] = useState<number | null>(null);
 const [marketStructure, setMarketStructure] =
   useState("SIDEWAYS");
 
+const handleTakeTrade = () => {
 
+  if (!tradePlan) return;
 
+  const active = activateTrade(tradePlan);
+
+  setActiveTrade(active);
+
+  setTradePlan(null); 
+
+};
+
+function processTradeEngine(
+  analysis: any,
+  price: number
+) {
+
+  if (
+    tradePlan ||
+    activeTrade
+  ) {
+    return;
+  }
+
+  if (
+    analysis.action !== "BUY" &&
+    analysis.action !== "SELL"
+  ) {
+    return;
+
+  }
+
+    if (analysis.action === lastSignal) {
+  return;
+}
+
+  const plan = createTradePlan(
+    analysis.action,
+    price,
+    analysis.confidence
+  );
+
+  setTradePlan(plan);
+
+  setLastSignal(analysis.action);
+  setSignalExpiry(
+  new Date(Date.now() + 30000)
+);
+  console.log(
+    "New Trade Created:",
+    plan
+  );
+
+}
 
   useEffect(() => {
 
@@ -335,38 +393,10 @@ console.log("Pattern being sent to AI:", detectedPattern);
 
 });
 
-const plan = createTradePlan(
-  analysis.action,
-  newNifty.price,
-  analysis.confidence
+processTradeEngine(
+  analysis,
+  newNifty.price
 );
-
-if (!tradePlan) {
-
-  setTradePlan(plan);
-
-  console.log(
-    "New Trade Created:",
-    plan
-  );
-
-}
-
-if (
-  !activeTrade &&
-  (analysis.action === "BUY" ||
-    analysis.action === "SELL")
-) {
-
-setActiveTrade({
-
-  ...plan,
-
-  status: "ACTIVE",
-
-});
-
-}
 
 if (activeTrade) {
 
@@ -376,9 +406,19 @@ if (activeTrade) {
       newNifty.price
     );
 
+    console.log(
+  "Updated Trade:",
+  JSON.stringify(updatedTrade, null, 2)
+);
+
   setActiveTrade(updatedTrade);
 
   if (updatedTrade.status === "CLOSED") {
+
+    console.log(
+  "Trade Closed:",
+  JSON.stringify(updatedTrade, null, 2)
+);
 
     setTradeHistory(prev => [
       ...prev,
@@ -622,12 +662,13 @@ if (detectedPattern !== "No Pattern") {
 
   <MarketStatus />
 
-  {tradePlan && (
-    <TradePlan
-      plan={tradePlan}
-      expiry={signalExpiry}
-    />
-  )}
+ {tradePlan && (
+  <TradePlan
+    plan={tradePlan}
+    expiry={signalExpiry}
+    onTakeTrade={handleTakeTrade}
+  />
+)}
 
   {activeTrade && (
     <ActiveTradeMonitor

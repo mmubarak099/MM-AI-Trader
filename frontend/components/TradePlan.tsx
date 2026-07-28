@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 type Props = {
   plan: any;
   expiry: Date | null;
+  onTakeTrade: () => void;
 };
 
 export default function TradePlan({
   plan,
   expiry,
+  onTakeTrade,
 }: Props) {
 
   if (!plan) return null;
@@ -128,7 +130,21 @@ export default function TradePlan({
   </p>
 
 </div>
-      </div>
-    </div>
+
+</div>
+
+<div className="mt-6">
+
+  <button
+    onClick={onTakeTrade}
+    className="w-full rounded-lg bg-green-600 hover:bg-green-700 py-3 font-semibold transition"
+  >
+    ✅ Take Trade
+  </button>
+
+</div>
+
+</div>
+
   );
 }
