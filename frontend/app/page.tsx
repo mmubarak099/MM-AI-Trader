@@ -14,6 +14,7 @@ import AIMarketSummary from "../components/AIMarketSummary";
 import TradePlan from "../components/TradePlan";
 import AIDecisionPanel from "../components/AIDecisionPanel";
 import ActiveTradeMonitor from "../components/ActiveTradeMonitor";
+import TradeHistory from "../components/TradeHistory";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -684,11 +685,16 @@ if (detectedPattern !== "No Pattern") {
 
 </div>
 
-</div>   // closes xl:grid-cols-3 layout
+</div>   {/* closes xl:grid-cols-3 layout */}
 
 <div className="mt-8">
   <PriceChart prices={priceHistory} />
 </div>  
+
+<div className="mt-8">
+  <TradeHistory trades={tradeHistory} />
+</div>
+
 <div className="mt-8">
 
   <AIDecisionPanel

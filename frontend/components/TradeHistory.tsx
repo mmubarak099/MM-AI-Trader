@@ -58,7 +58,7 @@ export default function TradeHistory({
 
                   <br />
 
-                  Exit : {trade.current}
+                  Exit : {trade.currentPrice}
 
                   <br />
 
