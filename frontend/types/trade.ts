@@ -1,3 +1,5 @@
+import type { TradeEvent } from "./tradeEvent";
+
 export type TradeAction =
   | "BUY"
   | "SELL";
@@ -19,7 +21,6 @@ export type TradeUrgency =
   | "HIGH";
 
 export interface Trade {
-
   id: string;
 
   action: TradeAction;
@@ -50,6 +51,21 @@ export interface Trade {
 
   target1Hit: boolean;
 
-target2Hit: boolean;
+  target2Hit: boolean;
 
+  partialProfitBooked: boolean;
+
+  remainingPosition: number;
+
+  realizedPnL: number;
+
+  highestPrice: number;
+
+lowestPrice: number;
+
+trailingStopEnabled: boolean;
+
+riskRewardRatio: number;
+
+  events: TradeEvent[];
 }

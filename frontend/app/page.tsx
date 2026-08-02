@@ -15,6 +15,7 @@ import TradePlan from "../components/TradePlan";
 import AIDecisionPanel from "../components/AIDecisionPanel";
 import ActiveTradeMonitor from "../components/ActiveTradeMonitor";
 import TradeHistory from "../components/TradeHistory";
+import TradeStatistics from "../components/TradeStatistics";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -195,13 +196,20 @@ function processTradeEngine(
     return;
   }
 
-  if (
-    analysis.action !== "BUY" &&
-    analysis.action !== "SELL"
-  ) {
-    return;
+if (
+  analysis.action !== "BUY" &&
+  analysis.action !== "SELL"
+) {
+  return;
+}
 
-  }
+if (analysis.confidence < 70) {
+  console.log(
+    "Trade rejected: Confidence too low",
+    analysis.confidence
+  );
+  return;
+}
 
     if (analysis.action === lastSignal) {
   return;
@@ -212,6 +220,8 @@ function processTradeEngine(
     price,
     analysis.confidence
   );
+
+console.log("AI Confidence:", analysis.confidence);
 
   setTradePlan(plan);
 
@@ -406,6 +416,16 @@ if (activeTrade) {
       activeTrade,
       newNifty.price
     );
+
+    console.log(
+  "REALIZED PNL FROM updateTrade:",
+  updatedTrade.realizedPnL
+);
+
+console.log(
+  "FULL UPDATED TRADE:",
+  updatedTrade
+);
 
     console.log(
   "Updated Trade:",
@@ -693,6 +713,12 @@ if (detectedPattern !== "No Pattern") {
 
 <div className="mt-8">
   <TradeHistory trades={tradeHistory} />
+</div>
+
+<div className="mt-8">
+  <TradeStatistics
+    trades={tradeHistory}
+  />
 </div>
 
 <div className="mt-8">

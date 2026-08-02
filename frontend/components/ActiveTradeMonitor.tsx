@@ -67,14 +67,35 @@ export default function ActiveTradeMonitor({
         </div>
 
         <div>
-          <p className="text-gray-400">
-            P/L
-          </p>
-          <p className={`${pnlColor} font-bold text-xl`}>
-  {trade.pnl >= 0 ? "+" : ""}
-  {trade.pnl}
-</p>
-        </div>
+  <p className="text-gray-400">
+    Live P/L
+  </p>
+
+  <p className={`${pnlColor} font-bold text-xl`}>
+    {trade.pnl >= 0 ? "+" : ""}
+    {trade.pnl.toFixed(2)}
+  </p>
+
+
+  {trade.realizedPnL !== undefined && (
+    <>
+      <p className="text-gray-400 mt-2">
+        Realized P/L
+      </p>
+
+      <p
+        className={`font-bold ${
+          trade.realizedPnL >= 0
+            ? "text-green-400"
+            : "text-red-400"
+        }`}
+      >
+        {trade.realizedPnL >= 0 ? "+" : ""}
+        {trade.realizedPnL.toFixed(2)}
+      </p>
+    </>
+  )}
+</div>
 
         <div>
           <p className="text-gray-400">

@@ -40,31 +40,88 @@ export default function TradeHistory({
                     {trade.action}
                   </span>
 
-                  <span
-                    className={
-                      trade.pnl >= 0
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }
-                  >
-                    {trade.pnl.toFixed(2)}
-                  </span>
+                  <div className="text-right">
+
+  <p
+    className={
+      trade.result === "WIN"
+        ? "text-green-400 font-bold"
+        : "text-red-400 font-bold"
+    }
+  >
+    {trade.result}
+  </p>
+
+  <p
+    className={
+      trade.pnl >= 0
+        ? "text-green-400"
+        : "text-red-400"
+    }
+  >
+    P&L : {trade.pnl.toFixed(2)}
+  </p>
+
+</div>
 
                 </div>
 
-                <div className="mt-2 text-sm text-gray-300">
+<div className="mt-3 text-sm space-y-1">
 
-                  Entry : {trade.entry}
+  <p>
+    <span className="text-gray-400">Entry :</span>{" "}
+    <span className="text-white">{trade.entry}</span>
+  </p>
 
-                  <br />
+  <p>
+    <span className="text-gray-400">Exit :</span>{" "}
+    <span className="text-white">{trade.currentPrice}</span>
+  </p>
 
-                  Exit : {trade.currentPrice}
+  <p>
+    <span className="text-gray-400">Status :</span>{" "}
+    <span className="text-cyan-400">{trade.status}</span>
+  </p>
 
-                  <br />
+  <p>
+    <span className="text-gray-400">Confidence :</span>{" "}
+    <span className="text-yellow-400">
+      {trade.confidence}%
+    </span>
+  </p>
 
-                  Status : {trade.status}
+<p>
+  <span className="text-gray-400">Opened :</span>{" "}
+  <span className="text-white">
+    {trade.openedAt
+      ? new Date(trade.openedAt).toLocaleTimeString()
+      : "-"}
+  </span>
+</p>
 
-                </div>
+<p>
+  <span className="text-gray-400">Closed :</span>{" "}
+  <span className="text-white">
+    {trade.closedAt
+      ? new Date(trade.closedAt).toLocaleTimeString()
+      : "-"}
+  </span>
+</p>
+
+<p>
+  <span className="text-gray-400">Duration :</span>{" "}
+  <span className="text-cyan-400">
+    {trade.openedAt && trade.closedAt
+      ? `${Math.floor(
+          (new Date(trade.closedAt).getTime() -
+            new Date(trade.openedAt).getTime()) /
+            1000
+        )} sec`
+      : "-"}
+  </span>
+</p>
+
+</div>
 
               </div>
 

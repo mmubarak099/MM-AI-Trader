@@ -405,7 +405,11 @@ if (data.pattern === "Bullish Engulfing") {
   }
 
 
-
+score += trendScore;
+score += momentumScore;
+score += patternScore;
+score += movingAverageScore;
+score += riskScore;
 
 
   // Keep score between 0-100
