@@ -25,7 +25,7 @@ export default function TradeHistory({
             .map((trade, index) => (
 
               <div
-                key={index}
+                key={trade.id}
                 className="bg-gray-800 rounded-lg p-4"
               >
                 <div className="flex justify-between">
@@ -52,15 +52,21 @@ export default function TradeHistory({
     {trade.result}
   </p>
 
-  <p
-    className={
-      trade.pnl >= 0
-        ? "text-green-400"
-        : "text-red-400"
-    }
-  >
-    P&L : {trade.pnl.toFixed(2)}
+<p
+  className={
+    (trade.realizedPnL ?? trade.pnl) >= 0
+      ? "text-green-400"
+      : "text-red-400"
+  }
+>
+  P&L : {(trade.realizedPnL ?? trade.pnl).toFixed(2)}
+</p>
+
+{trade.result === "NONE" && (
+  <p className="text-gray-400 text-sm">
+    Live P&L : {trade.pnl.toFixed(2)}
   </p>
+)}
 
 </div>
 
