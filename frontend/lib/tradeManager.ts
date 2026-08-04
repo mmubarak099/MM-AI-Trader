@@ -1,4 +1,23 @@
 import type { Trade } from "../types/trade";
+import type { TradeEvent } from "../types/tradeEvent";
+
+function addEvent(
+  events: TradeEvent[],
+  type: TradeEvent["type"],
+  price: number,
+  description: string
+): TradeEvent[] {
+  return [
+    ...events,
+    {
+      id: crypto.randomUUID(),
+      type,
+      timestamp: new Date(),
+      price,
+      description,
+    },
+  ];
+}
 
 export function activateTrade(
   trade: Trade
@@ -43,6 +62,8 @@ export function updateTrade(
 
   let realizedPnL =
     trade.realizedPnL;
+
+  let events = [...trade.events];
 
   //--------------------------------------------------
   // NEW
@@ -115,6 +136,24 @@ export function updateTrade(
 
     console.log("🎯 TARGET 1 HIT");
   }
+
+  status = "TARGET 1 HIT";
+
+events = addEvent(
+  events,
+  "TARGET1_HIT",
+  currentPrice,
+  "Target 1 reached"
+);
+
+events = addEvent(
+  events,
+  "PARTIAL_PROFIT_BOOKED",
+  currentPrice,
+  "50% position booked"
+);
+
+console.log("🎯 TARGET 1 HIT");
 
   //--------------------------------------------------
   // Trailing Stop

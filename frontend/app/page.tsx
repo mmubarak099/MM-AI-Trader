@@ -26,6 +26,7 @@ import CandlestickChart from "../components/CandlestickChart";
 import { detectMarketStructure } from "../lib/marketStructure";
 import { detectBreakout } from "../lib/breakoutDetector";
 import { analyzeVolume } from "../lib/volumeAnalyzer";
+import { validateSignal } from "../lib/signalValidator";
 import {
   activateTrade,
   updateTrade,
@@ -403,6 +404,7 @@ console.log("Pattern being sent to AI:", detectedPattern);
   volumeStrength,
 
 });
+
 
 processTradeEngine(
   analysis,
