@@ -16,6 +16,7 @@ import AIDecisionPanel from "../components/AIDecisionPanel";
 import ActiveTradeMonitor from "../components/ActiveTradeMonitor";
 import TradeHistory from "../components/TradeHistory";
 import TradeStatistics from "../components/TradeStatistics";
+import TradeManagerAI from "../components/TradeManagerAI";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
 import { analyzeMarket } from "../lib/aiEngine";
@@ -27,6 +28,7 @@ import { detectMarketStructure } from "../lib/marketStructure";
 import { detectBreakout } from "../lib/breakoutDetector";
 import { analyzeVolume } from "../lib/volumeAnalyzer";
 import { validateSignal } from "../lib/signalValidator";
+import { manageTrade } from "../lib/tradeManagerAI";
 import {
   activateTrade,
   updateTrade,
@@ -48,6 +50,7 @@ import {
 } from "../lib/indicators";
 import { calculateSupportResistance }
   from "../lib/supportResistance";
+import type { TradeSignal } from "../types/tradeSignal";
 
 
 
@@ -122,18 +125,35 @@ const [signalHistory, setSignalHistory] =
   resistance: [] as number[],
 });
 
+const [currentSignal, setCurrentSignal] =
+  useState<TradeSignal | null>(null);
 const [tradePlan, setTradePlan] =
   useState<any>(null);
 const [activeTrade, setActiveTrade] =
   useState<any>(null);
 const [tradeHistory, setTradeHistory] =
   useState<any[]>([]);
-
+const [tradeDecision, setTradeDecision] = useState<any>(null);
   const [signalExpiry, setSignalExpiry] =
   useState<Date | null>(null);
 
   const [lastSignal, setLastSignal] =
   useState<string>("NONE");
+
+  // NEW ------------------------------
+
+const [signalLocked, setSignalLocked] =
+  useState(false);
+
+const [signalCreatedAt, setSignalCreatedAt] =
+  useState<Date | null>(null);
+
+const [signalTimeLeft, setSignalTimeLeft] =
+  useState(0);
+
+const SIGNAL_DURATION = 120000; // 2 minutes
+
+// ------------------------------
 
 const [patternHistory, setPatternHistory] =
   useState<
@@ -181,7 +201,17 @@ const handleTakeTrade = () => {
 
   setActiveTrade(active);
 
-  setTradePlan(null); 
+  setTradePlan(null);
+
+  setCurrentSignal(null);
+
+  // Reset signal lifecycle
+  setSignalLocked(false);
+  setSignalCreatedAt(null);
+  setSignalTimeLeft(0);
+  setSignalExpiry(null);
+  setLastSignal("NONE");
+   console.log("✅ TradePlan cleared");
 
 };
 
@@ -190,12 +220,13 @@ function processTradeEngine(
   price: number
 ) {
 
-  if (
-    tradePlan ||
-    activeTrade
-  ) {
-    return;
-  }
+if (
+  signalLocked ||
+  tradePlan ||
+  activeTrade
+) {
+  return;
+}
 
 if (
   analysis.action !== "BUY" &&
@@ -212,19 +243,48 @@ if (analysis.confidence < 70) {
   return;
 }
 
-    if (analysis.action === lastSignal) {
+if (
+  analysis.action === lastSignal &&
+  signalExpiry &&
+  signalExpiry > new Date()
+) {
+  console.log(
+    "Duplicate signal skipped (still within expiry)"
+  );
   return;
 }
 
-  const plan = createTradePlan(
-    analysis.action,
-    price,
-    analysis.confidence
-  );
+const plan = createTradePlan(
+  analysis.action,
+  price,
+  analysis.confidence
+);
+
+if (!plan) return;
 
 console.log("AI Confidence:", analysis.confidence);
 
+console.log("🚨 Creating NEW Trade Plan");
+
   setTradePlan(plan);
+
+  setCurrentSignal({
+  id: plan.id,
+  action: plan.action,
+  confidence: plan.confidence,
+  entry: plan.entry,
+  stopLoss: plan.stopLoss,
+  target1: plan.target1,
+  target2: plan.target2,
+  urgency: plan.urgency,
+  status: "ACTIVE",
+  createdAt: new Date(),
+  expiresAt: new Date(Date.now() + SIGNAL_DURATION),
+});
+
+setSignalLocked(true);
+
+setSignalCreatedAt(new Date());
 
   setLastSignal(analysis.action);
   setSignalExpiry(
@@ -236,6 +296,48 @@ console.log("AI Confidence:", analysis.confidence);
   );
 
 }
+
+useEffect(() => {
+
+  if (!signalLocked || !signalCreatedAt) return;
+
+  const timer = setInterval(() => {
+
+    const elapsed =
+      Date.now() - signalCreatedAt.getTime();
+
+    const remaining =
+      Math.max(
+        0,
+        SIGNAL_DURATION - elapsed
+      );
+
+    setSignalTimeLeft(remaining);
+
+    if (remaining <= 0) {
+
+      setSignalLocked(false);
+
+      setSignalCreatedAt(null);
+
+      setSignalTimeLeft(0);
+
+      setLastSignal("NONE");
+
+      setTradePlan(null);
+
+      console.log("⏰ Signal Expired");
+
+    }
+
+  }, 1000);
+
+  return () => clearInterval(timer);
+
+}, [
+  signalLocked,
+  signalCreatedAt,
+]);
 
   useEffect(() => {
 
@@ -320,6 +422,11 @@ const volumeStrength =
     ...volumeHistory,
     currentCandle.volume,
   ]);
+
+const volumeScore =
+  volumeStrength === "NORMAL"
+    ? 70
+    : 30;
 
         const niftyChange =
   ((newNifty.price - 24650) / 24650) * 100;
@@ -419,6 +526,90 @@ if (activeTrade) {
       newNifty.price
     );
 
+    const tradeDecision = manageTrade({
+
+  action: updatedTrade.action,
+
+  currentPrice: newNifty.price,
+
+  entry: updatedTrade.entry,
+
+  stopLoss: updatedTrade.stopLoss,
+
+  target1: updatedTrade.target1,
+
+  target2: updatedTrade.target2,
+
+  pnl: updatedTrade.pnl,
+
+  target1Hit: updatedTrade.target1Hit,
+
+  rsi: rsi ?? 50,
+
+  ema20: ema20Value ?? 0,
+
+  ema50: ema50Value ?? 0,
+
+  macd: macdValue ?? 0,
+
+  trend: marketTrend,
+
+  breakout: breakout !== "NONE",
+
+  volumeStrength: volumeScore,
+
+  marketStructure: structure,
+
+});
+
+console.log("🤖 Trade Manager AI:", tradeDecision);
+
+setTradeDecision(tradeDecision);
+
+if (tradeDecision.recommendation === "MOVE_TO_BREAK_EVEN") {
+
+  updatedTrade.stopLoss = updatedTrade.entry;
+
+}
+
+else if (
+  tradeDecision.recommendation === "TRAIL_STOP"
+) {
+
+  if (updatedTrade.action === "BUY") {
+
+    updatedTrade.stopLoss = Math.max(
+      updatedTrade.stopLoss,
+      updatedTrade.currentPrice - 15
+    );
+
+  } else {
+
+    updatedTrade.stopLoss = Math.min(
+      updatedTrade.stopLoss,
+      updatedTrade.currentPrice + 15
+    );
+
+  }
+
+}
+
+else if (
+  tradeDecision.recommendation === "BOOK_PARTIAL"
+) {
+
+  console.log("📦 AI recommends partial booking");
+
+}
+
+else if (
+  tradeDecision.recommendation === "EXIT"
+) {
+
+  console.log("🚪 AI recommends immediate exit");
+
+}
+
     console.log(
   "REALIZED PNL FROM updateTrade:",
   updatedTrade.realizedPnL
@@ -455,6 +646,7 @@ console.log(
 }
 
 // Create expiry only for BUY / SELL signals
+
 if (
   analysis.action === "BUY" ||
   analysis.action === "SELL"
@@ -588,7 +780,7 @@ if (detectedPattern !== "No Pattern") {
 
 
 
-    },3000);
+    },1000);
 
 
 
@@ -693,17 +885,23 @@ if (detectedPattern !== "No Pattern") {
   />
 )}
 
-  {activeTrade && (
-    <ActiveTradeMonitor
-      trade={activeTrade}
-    />
-  )}
-
-  <AIMarketSummary
-    summary={aiSignal.summary}
-    confidence={aiSignal.confidence}
-    action={aiSignal.action}
+{activeTrade && (
+  <ActiveTradeMonitor
+    trade={activeTrade}
   />
+)}
+
+{activeTrade && (
+  <TradeManagerAI
+    decision={tradeDecision}
+  />
+)}
+
+<AIMarketSummary
+  summary={aiSignal.summary}
+  confidence={aiSignal.confidence}
+  action={aiSignal.action}
+/>
 
 </div>
 
@@ -744,9 +942,37 @@ if (detectedPattern !== "No Pattern") {
 
             </h3>
 
+            {signalLocked && (
 
+  <div className="mt-3 rounded-lg border border-cyan-500 bg-cyan-950/40 p-3">
 
+    <div className="flex justify-between items-center">
 
+      <span className="font-semibold text-cyan-300">
+        🔒 Signal Locked
+      </span>
+
+      <span className="font-bold text-white">
+
+        {Math.floor(signalTimeLeft / 60000)}:
+
+        {String(
+          Math.floor((signalTimeLeft % 60000) / 1000)
+        ).padStart(2, "0")}
+
+      </span>
+
+    </div>
+
+    <p className="text-gray-400 text-sm mt-2">
+
+      This signal will remain valid until the timer expires.
+
+    </p>
+
+  </div>
+
+)}
 
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-6">
 
@@ -803,19 +1029,49 @@ if (detectedPattern !== "No Pattern") {
                 </p>
 
 
-                <p
-  className={`inline-flex items-center px-4 py-2 rounded-full font-bold text-white ${
-    aiSignal.action === "BUY"
-      ? "bg-green-600"
-      : aiSignal.action === "SELL"
-      ? "bg-red-600"
-      : aiSignal.action === "WATCH"
-      ? "bg-blue-600"
-      : "bg-yellow-500 text-black"
-  }`}
->
-  {aiSignal.action}
-</p>
+                {activeTrade ? (
+
+  <div className="space-y-2">
+
+    <p className="font-bold text-cyan-400">
+      MANAGING
+    </p>
+
+    <p className="text-sm text-gray-300">
+      Current Trade: {activeTrade.action}
+    </p>
+
+    <p
+      className={`inline-flex items-center px-4 py-2 rounded-full font-bold text-white ${
+        aiSignal.action === "BUY"
+          ? "bg-green-600"
+          : aiSignal.action === "SELL"
+          ? "bg-red-600"
+          : "bg-yellow-500 text-black"
+      }`}
+    >
+      Market Bias: {aiSignal.action}
+    </p>
+
+  </div>
+
+) : (
+
+  <p
+    className={`inline-flex items-center px-4 py-2 rounded-full font-bold text-white ${
+      aiSignal.action === "BUY"
+        ? "bg-green-600"
+        : aiSignal.action === "SELL"
+        ? "bg-red-600"
+        : aiSignal.action === "WATCH"
+        ? "bg-blue-600"
+        : "bg-yellow-500 text-black"
+    }`}
+  >
+    {aiSignal.action}
+  </p>
+
+)}
 
               </div>
 

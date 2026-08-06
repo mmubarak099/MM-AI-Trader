@@ -122,6 +122,49 @@ export default function ActiveTradeMonitor({
           <p className="text-green-400">
             {trade.target2}
           </p>
+                </div>
+
+        {/* Trade Timeline */}
+
+        <div className="mt-8 border-t border-gray-800 pt-5">
+
+          <h4 className="font-bold text-lg mb-4">
+            📜 Trade Timeline
+          </h4>
+
+          <div className="space-y-3">
+
+            {trade.events?.map((event: any) => (
+
+              <div
+                key={event.id}
+                className="flex items-start gap-3"
+              >
+
+                <div className="w-2 h-2 mt-2 rounded-full bg-cyan-400" />
+
+                <div>
+
+                  <p className="font-semibold">
+                    {event.type}
+                  </p>
+
+                  <p className="text-sm text-gray-400">
+                    {event.description}
+                  </p>
+
+                  <p className="text-xs text-gray-500">
+                    {new Date(event.timestamp).toLocaleTimeString()}
+                  </p>
+
+                </div>
+
+              </div>
+
+            ))}
+
+          </div>
+
         </div>
 
       </div>

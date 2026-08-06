@@ -23,6 +23,13 @@ export function activateTrade(
   trade: Trade
 ): Trade {
 
+  const events = addEvent(
+    [...trade.events],
+    "TRADE_OPENED",
+    trade.entry,
+    `${trade.action} trade activated`
+  );
+
   return {
 
     ...trade,
@@ -30,6 +37,8 @@ export function activateTrade(
     status: "ACTIVE",
 
     openedAt: new Date(),
+
+    events,
 
   };
 
@@ -132,12 +141,14 @@ export function updateTrade(
 
     stopLoss = trade.entry;
 
+    events = addEvent(
+  events,
+  "BREAK_EVEN_ENABLED",
+  stopLoss,
+  "Stop loss moved to break even"
+);
+
     status = "TARGET 1 HIT";
-
-    console.log("🎯 TARGET 1 HIT");
-  }
-
-  status = "TARGET 1 HIT";
 
 events = addEvent(
   events,
@@ -152,8 +163,8 @@ events = addEvent(
   currentPrice,
   "50% position booked"
 );
-
-console.log("🎯 TARGET 1 HIT");
+    console.log("🎯 TARGET 1 HIT");
+  }
 
   //--------------------------------------------------
   // Trailing Stop
@@ -234,6 +245,20 @@ if (
 
   closedAt = new Date();
 
+  events = addEvent(
+  events,
+  "TARGET2_HIT",
+  currentPrice,
+  "Target 2 reached"
+);
+
+events = addEvent(
+  events,
+  "TRADE_CLOSED",
+  currentPrice,
+  "Trade closed at Target 2"
+);
+
   console.log("🏆 TARGET 2 HIT");
 
 }
@@ -274,6 +299,20 @@ if (hitStopLoss) {
 
   closedAt = new Date();
 
+  events = addEvent(
+  events,
+  "STOP_LOSS_HIT",
+  currentPrice,
+  "Stop loss triggered"
+);
+
+events = addEvent(
+  events,
+  "TRADE_CLOSED",
+  currentPrice,
+  "Trade closed by stop loss"
+);
+
   console.log("🛑 STOP LOSS HIT");
 
 }
@@ -312,6 +351,8 @@ console.log("RETURNING pnl =", pnl);
     lowestPrice,
 
     trailingStopEnabled,
+
+    events,
 
   };
 
