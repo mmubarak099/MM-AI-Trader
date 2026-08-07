@@ -8,6 +8,14 @@ export interface TradeSignal {
 
   entry: number;
 
+  trend: string;
+
+  marketCondition: string;
+
+  riskLevel: string;
+
+  advice: string;
+
   stopLoss: number;
 
   target1: number;

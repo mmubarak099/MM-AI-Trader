@@ -1,24 +1,24 @@
 import { useEffect, useState } from "react";
 
+import type { TradeSignal } from "../types/tradeSignal";
+
 type Props = {
-  plan: any;
-  expiry: Date | null;
+  signal: TradeSignal | null;
   onTakeTrade: () => void;
 };
 
 export default function TradePlan({
-  plan,
-  expiry,
+  signal,
   onTakeTrade,
 }: Props) {
 
-  if (!plan) return null;
+  if (!signal) return null;
   const [remaining, setRemaining] =
   useState("");
 
   useEffect(() => {
 
-  if (!expiry) {
+  if (!signal) {
     setRemaining("-");
     return;
   }
@@ -26,7 +26,7 @@ export default function TradePlan({
   const updateCountdown = () => {
 
     const diff =
-      expiry.getTime() - Date.now();
+      signal.expiresAt.getTime() - Date.now();
 
     if (diff <= 0) {
 
@@ -55,7 +55,7 @@ export default function TradePlan({
 
   return () => clearInterval(timer);
 
-}, [expiry]);
+}, [signal]);
 
   return (
     <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
@@ -67,37 +67,37 @@ export default function TradePlan({
 
         <div>
           <p className="text-gray-400">Action</p>
-          <p className="font-bold">{plan.action}</p>
+          <p className="font-bold">{signal.action}</p>
         </div>
 
         <div>
           <p className="text-gray-400">Entry</p>
-          <p>{plan.entry}</p>
+          <p>{signal.entry}</p>
         </div>
 
         <div>
           <p className="text-gray-400">Stop Loss</p>
-          <p className="text-red-400">{plan.stopLoss}</p>
+          <p className="text-red-400">{signal.stopLoss}</p>
         </div>
 
         <div>
           <p className="text-gray-400">Target 1</p>
-          <p className="text-green-400">{plan.target1}</p>
+          <p className="text-green-400">{signal.target1}</p>
         </div>
 
         <div>
           <p className="text-gray-400">Target 2</p>
-          <p className="text-green-400">{plan.target2}</p>
+          <p className="text-green-400">{signal.target2}</p>
         </div>
 
         <div>
           <p className="text-gray-400">Risk / Reward</p>
-          <p>{plan.riskReward}</p>
+          <p>{"1 : 1.5"}</p>
         </div>
 
         <div>
           <p className="text-gray-400">Urgency</p>
-          <p>{plan.urgency}</p>
+          <p>{signal.urgency}</p>
         </div>
 <div>
 

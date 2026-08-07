@@ -83,21 +83,15 @@ export function updateTrade(
   let trailingStopEnabled =
     trade.trailingStopEnabled;
 
-  if (trade.action === "BUY") {
+  highestPrice = Math.max(
+  highestPrice,
+  currentPrice
+);
 
-    highestPrice = Math.max(
-      highestPrice,
-      currentPrice
-    );
-
-  } else {
-
-    lowestPrice = Math.min(
-      lowestPrice,
-      currentPrice
-    );
-
-  }
+lowestPrice = Math.min(
+  lowestPrice,
+  currentPrice
+);
 
   //--------------------------------------------------
   // Target checks

@@ -7,130 +7,270 @@ type Props = {
 export default function TradeStatistics({
   trades,
 }: Props) {
+  const closedTrades = trades.filter(
+    (t) => t.status === "CLOSED"
+  );
 
-  const totalTrades = trades.length;
+  const wins = closedTrades.filter(
+    (t) => t.result === "WIN"
+  );
 
-  const winningTrades =
-    trades.filter(
-      (trade) => trade.result === "WIN"
-    ).length;
+  const losses = closedTrades.filter(
+    (t) => t.result === "LOSS"
+  );
 
-  const losingTrades =
-    trades.filter(
-      (trade) => trade.result === "LOSS"
-    ).length;
+  const totalPnL = closedTrades.reduce(
+    (sum, t) => sum + t.realizedPnL,
+    0
+  );
 
+  const averageWin =
+  wins.length === 0
+    ? 0
+    : wins.reduce(
+        (sum, t) => sum + t.realizedPnL,
+        0
+      ) / wins.length;
+
+const averageLoss =
+  losses.length === 0
+    ? 0
+    : losses.reduce(
+        (sum, t) => sum + t.realizedPnL,
+        0
+      ) / losses.length;
+
+const biggestWin =
+  wins.length === 0
+    ? 0
+    : Math.max(
+        ...wins.map(
+          t => t.realizedPnL
+        )
+      );
+
+const biggestLoss =
+  losses.length === 0
+    ? 0
+    : Math.min(
+        ...losses.map(
+          t => t.realizedPnL
+        )
+      );
+
+      const grossProfit = wins.reduce(
+  (sum, t) => sum + t.realizedPnL,
+  0
+);
+
+const grossLoss = Math.abs(
+  losses.reduce(
+    (sum, t) => sum + t.realizedPnL,
+    0
+  )
+);
+
+const profitFactor =
+  grossLoss === 0
+    ? grossProfit
+    : grossProfit / grossLoss;
+
+    const expectancy =
+  closedTrades.length === 0
+    ? 0
+    : totalPnL / closedTrades.length;
+
+const maxWinStreak = (() => {
+  let max = 0;
+  let current = 0;
+
+  closedTrades.forEach((trade) => {
+    if (trade.result === "WIN") {
+      current++;
+      max = Math.max(max, current);
+    } else {
+      current = 0;
+    }
+  });
+
+  return max;
+})();
+
+const maxLossStreak = (() => {
+  let max = 0;
+  let current = 0;
+
+  closedTrades.forEach((trade) => {
+    if (trade.result === "LOSS") {
+      current++;
+      max = Math.max(max, current);
+    } else {
+      current = 0;
+    }
+  });
+
+  return max;
+})();
 
   const winRate =
-    totalTrades > 0
-      ? (
-          (winningTrades / totalTrades) *
+    closedTrades.length === 0
+      ? 0
+      : (
+          (wins.length / closedTrades.length) *
           100
-        ).toFixed(1)
-      : "0";
-
-
-  const totalPoints =
-    trades.reduce(
-      (total, trade) =>
-        total + trade.pnl,
-      0
-    ).toFixed(2);
-
-
-  const averageProfit =
-    winningTrades > 0
-      ? (
-          trades
-            .filter(
-              (trade) =>
-                trade.result === "WIN"
-            )
-            .reduce(
-              (total, trade) =>
-                total + trade.pnl,
-              0
-            ) / winningTrades
-        ).toFixed(2)
-      : "0";
-
+        ).toFixed(1);
 
   return (
-    <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6">
 
-      <h3 className="text-xl font-bold mb-4">
-        Trade Performance
-      </h3>
+      <h2 className="text-xl font-bold mb-6">
+        Trading Performance
+      </h2>
 
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
 
         <div>
           <p className="text-gray-400">
             Total Trades
           </p>
-          <p className="text-white font-bold text-xl">
-            {totalTrades}
+          <p className="text-2xl font-bold">
+            {closedTrades.length}
           </p>
         </div>
-
 
         <div>
           <p className="text-gray-400">
             Wins
           </p>
-          <p className="text-green-400 font-bold text-xl">
-            {winningTrades}
+          <p className="text-2xl font-bold text-green-400">
+            {wins.length}
           </p>
         </div>
-
 
         <div>
           <p className="text-gray-400">
             Losses
           </p>
-          <p className="text-red-400 font-bold text-xl">
-            {losingTrades}
+          <p className="text-2xl font-bold text-red-400">
+            {losses.length}
           </p>
         </div>
-
 
         <div>
           <p className="text-gray-400">
             Win Rate
           </p>
-          <p className="text-blue-400 font-bold text-xl">
+          <p className="text-2xl font-bold">
             {winRate}%
           </p>
         </div>
 
-
         <div>
           <p className="text-gray-400">
-            Total Points
+            Total PnL
           </p>
-          <p className="text-green-400 font-bold text-xl">
-            {totalPoints}
+
+          <p
+            className={`text-2xl font-bold ${
+              totalPnL >= 0
+                ? "text-green-400"
+                : "text-red-400"
+            }`}
+          >
+            {totalPnL.toFixed(2)}
           </p>
+
         </div>
 
+<div>
+  <p className="text-gray-400">
+    Avg Win
+  </p>
+  <p className="text-green-400 text-2xl font-bold">
+    {averageWin.toFixed(2)}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Avg Loss
+  </p>
+  <p className="text-red-400 text-2xl font-bold">
+    {averageLoss.toFixed(2)}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Biggest Win
+  </p>
+  <p className="text-green-400 text-2xl font-bold">
+    {biggestWin.toFixed(2)}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Biggest Loss
+  </p>
+  <p className="text-red-400 text-2xl font-bold">
+    {biggestLoss.toFixed(2)}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Profit Factor
+  </p>
+
+  <p
+    className={`text-2xl font-bold ${
+      profitFactor >= 1
+        ? "text-green-400"
+        : "text-red-400"
+    }`}
+  >
+    {profitFactor.toFixed(2)}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Expectancy
+  </p>
+
+  <p
+    className={`text-2xl font-bold ${
+      expectancy >= 0
+        ? "text-green-400"
+        : "text-red-400"
+    }`}
+  >
+    {expectancy.toFixed(2)}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Max Win Streak
+  </p>
+
+  <p className="text-2xl font-bold text-green-400">
+    {maxWinStreak}
+  </p>
+</div>
+
+<div>
+  <p className="text-gray-400">
+    Max Loss Streak
+  </p>
+
+  <p className="text-2xl font-bold text-red-400">
+    {maxLossStreak}
+  </p>
+</div>
 
       </div>
-
-
-      <div className="mt-5">
-
-        <p className="text-gray-400">
-          Average Profit
-        </p>
-
-        <p className="text-yellow-400 font-bold text-xl">
-          {averageProfit}
-        </p>
-
-      </div>
-
 
     </div>
   );

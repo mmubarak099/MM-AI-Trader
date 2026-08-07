@@ -17,9 +17,17 @@ import ActiveTradeMonitor from "../components/ActiveTradeMonitor";
 import TradeHistory from "../components/TradeHistory";
 import TradeStatistics from "../components/TradeStatistics";
 import TradeManagerAI from "../components/TradeManagerAI";
+import TradeReadiness from "../components/TradeReadiness";
+import CurrentSignalCard from "../components/CurrentSignalCard";
 
 import { generateMarketPrice } from "../lib/marketSimulator";
-import { analyzeMarket } from "../lib/aiEngine";
+import {
+  analyzeMarket as analyzeMarketV1
+} from "../lib/aiEngine";
+
+import {
+  analyzeMarket as analyzeMarketV2
+} from "../lib/aiEngineV2";
 import { calculateRisk } from "../lib/riskEngine";
 import { detectBullishEngulfing } from "../lib/candlestick";
 import { analyzePattern } from "../lib/patternAnalyzer";
@@ -127,8 +135,6 @@ const [signalHistory, setSignalHistory] =
 
 const [currentSignal, setCurrentSignal] =
   useState<TradeSignal | null>(null);
-const [tradePlan, setTradePlan] =
-  useState<any>(null);
 const [activeTrade, setActiveTrade] =
   useState<any>(null);
 const [tradeHistory, setTradeHistory] =
@@ -139,6 +145,9 @@ const [tradeDecision, setTradeDecision] = useState<any>(null);
 
   const [lastSignal, setLastSignal] =
   useState<string>("NONE");
+
+  const [tradeCooldown, setTradeCooldown] =
+  useState(false);
 
   // NEW ------------------------------
 
@@ -195,13 +204,17 @@ const [marketStructure, setMarketStructure] =
 
 const handleTakeTrade = () => {
 
-  if (!tradePlan) return;
+if (!currentSignal) return;
 
-  const active = activateTrade(tradePlan);
+ const active = activateTrade(createTradePlan(
+  currentSignal!.action,
+  currentSignal!.entry,
+  currentSignal!.confidence
+)!);
 
   setActiveTrade(active);
 
-  setTradePlan(null);
+setCurrentSignal(null);
 
   setCurrentSignal(null);
 
@@ -221,11 +234,19 @@ function processTradeEngine(
 ) {
 
 if (
+
   signalLocked ||
-  tradePlan ||
+
+  tradeCooldown ||
+
+  currentSignal ||
+
   activeTrade
+
 ) {
+
   return;
+
 }
 
 if (
@@ -262,22 +283,34 @@ const plan = createTradePlan(
 
 if (!plan) return;
 
-console.log("AI Confidence:", analysis.confidence);
+console.log("🚨 Creating NEW Signal");
 
-console.log("🚨 Creating NEW Trade Plan");
-
-  setTradePlan(plan);
-
-  setCurrentSignal({
+setCurrentSignal({
   id: plan.id,
   action: plan.action,
   confidence: plan.confidence,
+
+  trend: analysis.trend,
+  marketCondition: analysis.marketCondition,
+  riskLevel: analysis.riskLevel,
+  advice: analysis.advice,
+
+pattern: analysis.pattern,
+
+marketStructure: analysis.marketStructure,
+
+breakout: analysis.breakout,
+
+volumeStrength: analysis.volumeStrength,
+
   entry: plan.entry,
   stopLoss: plan.stopLoss,
   target1: plan.target1,
   target2: plan.target2,
+
   urgency: plan.urgency,
   status: "ACTIVE",
+
   createdAt: new Date(),
   expiresAt: new Date(Date.now() + SIGNAL_DURATION),
 });
@@ -323,8 +356,6 @@ useEffect(() => {
       setSignalTimeLeft(0);
 
       setLastSignal("NONE");
-
-      setTradePlan(null);
 
       console.log("⏰ Signal Expired");
 
@@ -495,7 +526,7 @@ const vwapValue = calculateVWAP(
 console.log("Pattern being sent to AI:", detectedPattern);
 
 
-      const analysis = analyzeMarket({
+      const analysis = analyzeMarketV1({
   price: newNifty.price,
   previousPrice: nifty.price,
   trend: marketTrend,
@@ -512,6 +543,31 @@ console.log("Pattern being sent to AI:", detectedPattern);
 
 });
 
+const analysisV2 = analyzeMarketV2({
+
+  price: newNifty.price,
+  previousPrice: nifty.price,
+  trend: marketTrend,
+  rsi,
+  ema20: ema20Value,
+  ema50: ema50Value,
+  macd: macdValue,
+  pattern: detectedPattern,
+  support: levels.support,
+  resistance: levels.resistance,
+  marketStructure: structure,
+  breakout,
+  volumeStrength,
+
+});
+
+console.log("========== AI COMPARISON ==========");
+
+console.log("V1:", analysis);
+
+console.log("V2:", analysisV2);
+
+console.log("V1 Breakdown:", analysis.breakdown);
 
 processTradeEngine(
   analysis,
@@ -627,21 +683,32 @@ console.log(
 
   setActiveTrade(updatedTrade);
 
-  if (updatedTrade.status === "CLOSED") {
+if (updatedTrade.status === "CLOSED") {
 
-    console.log(
-  "Trade Closed:",
-  JSON.stringify(updatedTrade, null, 2)
-);
+  console.log(
+    "Trade Closed:",
+    JSON.stringify(updatedTrade, null, 2)
+  );
 
-    setTradeHistory(prev => [
-      ...prev,
-      updatedTrade,
-    ]);
+  setTradeHistory(prev => [
+    ...prev,
+    updatedTrade,
+  ]);
 
-    setActiveTrade(null);
+  // Start cooldown after a losing trade
+  if (updatedTrade.result === "LOSS") {
+
+    setTradeCooldown(true);
+
+    setTimeout(() => {
+      setTradeCooldown(false);
+    }, 60000);
 
   }
+
+  setActiveTrade(null);
+
+}
 
 }
 
@@ -877,10 +944,9 @@ if (detectedPattern !== "No Pattern") {
 
   <MarketStatus />
 
- {tradePlan && (
+{currentSignal && (
   <TradePlan
-    plan={tradePlan}
-    expiry={signalExpiry}
+    signal={currentSignal}
     onTakeTrade={handleTakeTrade}
   />
 )}
@@ -923,10 +989,30 @@ if (detectedPattern !== "No Pattern") {
 
 <div className="mt-8">
 
-  <AIDecisionPanel
-    signal={aiSignal}
-    pattern={pattern}
+{currentSignal && (
+
+  <CurrentSignalCard
+    signal={currentSignal}
   />
+
+)}
+
+<TradeReadiness
+  signal={
+    currentSignal
+      ? currentSignal
+      : aiSignal
+  }
+/>
+
+<AIDecisionPanel
+  signal={
+    currentSignal
+      ? currentSignal
+      : aiSignal
+  }
+  pattern={pattern}
+/>
 
 </div>
 
