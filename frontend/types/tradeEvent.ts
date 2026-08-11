@@ -6,7 +6,8 @@ export type TradeEventType =
   | "BREAK_EVEN_ENABLED"
   | "TARGET2_HIT"
   | "STOP_LOSS_HIT"
-  | "TRADE_CLOSED";
+  | "TRADE_CLOSED"
+  | "PROFIT_PROTECTION_ENABLED";
 
 export interface TradeEvent {
   id: string;

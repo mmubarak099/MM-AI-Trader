@@ -576,140 +576,43 @@ processTradeEngine(
 
 if (activeTrade) {
 
-  const updatedTrade =
-    updateTrade(
-      activeTrade,
-      newNifty.price
-    );
-
-    const tradeDecision = manageTrade({
-
-  action: updatedTrade.action,
-
-  currentPrice: newNifty.price,
-
-  entry: updatedTrade.entry,
-
-  stopLoss: updatedTrade.stopLoss,
-
-  target1: updatedTrade.target1,
-
-  target2: updatedTrade.target2,
-
-  pnl: updatedTrade.pnl,
-
-  target1Hit: updatedTrade.target1Hit,
-
-  rsi: rsi ?? 50,
-
-  ema20: ema20Value ?? 0,
-
-  ema50: ema50Value ?? 0,
-
-  macd: macdValue ?? 0,
-
-  trend: marketTrend,
-
-  breakout: breakout !== "NONE",
-
-  volumeStrength: volumeScore,
-
-  marketStructure: structure,
-
-});
-
-console.log("🤖 Trade Manager AI:", tradeDecision);
-
-setTradeDecision(tradeDecision);
-
-if (tradeDecision.recommendation === "MOVE_TO_BREAK_EVEN") {
-
-  updatedTrade.stopLoss = updatedTrade.entry;
-
-}
-
-else if (
-  tradeDecision.recommendation === "TRAIL_STOP"
-) {
-
-  if (updatedTrade.action === "BUY") {
-
-    updatedTrade.stopLoss = Math.max(
-      updatedTrade.stopLoss,
-      updatedTrade.currentPrice - 15
-    );
-
-  } else {
-
-    updatedTrade.stopLoss = Math.min(
-      updatedTrade.stopLoss,
-      updatedTrade.currentPrice + 15
-    );
-
-  }
-
-}
-
-else if (
-  tradeDecision.recommendation === "BOOK_PARTIAL"
-) {
-
-  console.log("📦 AI recommends partial booking");
-
-}
-
-else if (
-  tradeDecision.recommendation === "EXIT"
-) {
-
-  console.log("🚪 AI recommends immediate exit");
-
-}
-
-    console.log(
-  "REALIZED PNL FROM updateTrade:",
-  updatedTrade.realizedPnL
-);
-
-console.log(
-  "FULL UPDATED TRADE:",
-  updatedTrade
-);
-
-    console.log(
-  "Updated Trade:",
-  JSON.stringify(updatedTrade, null, 2)
-);
-
-  setActiveTrade(updatedTrade);
-
-if (updatedTrade.status === "CLOSED") {
+  const updatedTrade = updateTrade(
+    activeTrade,
+    newNifty.price
+  );
 
   console.log(
-    "Trade Closed:",
+    "Updated Trade:",
     JSON.stringify(updatedTrade, null, 2)
   );
 
-  setTradeHistory(prev => [
-    ...prev,
-    updatedTrade,
-  ]);
+  setActiveTrade(updatedTrade);
 
-  // Start cooldown after a losing trade
-  if (updatedTrade.result === "LOSS") {
+  if (updatedTrade.status === "CLOSED") {
 
-    setTradeCooldown(true);
+    console.log(
+      "Trade Closed:",
+      JSON.stringify(updatedTrade, null, 2)
+    );
 
-    setTimeout(() => {
-      setTradeCooldown(false);
-    }, 60000);
+    setTradeHistory(prev => [
+      ...prev,
+      updatedTrade,
+    ]);
 
+    // Start cooldown after a losing trade
+    if (updatedTrade.result === "LOSS") {
+
+      setTradeCooldown(true);
+
+      setTimeout(() => {
+        setTradeCooldown(false);
+      }, 60000);
+
+    }
+
+    setActiveTrade(null);
   }
-
-  setActiveTrade(null);
-
-}
-
 }
 
 // Create expiry only for BUY / SELL signals

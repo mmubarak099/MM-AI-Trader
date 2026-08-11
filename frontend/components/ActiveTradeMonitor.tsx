@@ -106,23 +106,71 @@ export default function ActiveTradeMonitor({
           </p>
         </div>
 
-        <div>
-          <p className="text-gray-400">
-            Target 1
-          </p>
-          <p className="text-green-400">
-            {trade.target1}
-          </p>
-        </div>
+    <div>
+      <p className="text-gray-400">
+        Target 1
+      </p>
 
-        <div>
-          <p className="text-gray-400">
-            Target 2
-          </p>
-          <p className="text-green-400">
-            {trade.target2}
-          </p>
-                </div>
+      <p
+        className={
+          trade.target1Hit
+            ? "font-bold text-green-400"
+            : "text-green-400"
+        }
+      >
+        {trade.target1Hit
+          ? "✅ HIT"
+          : trade.target1}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-gray-400">
+        Target 2
+      </p>
+
+      <p
+        className={
+          trade.target2Hit
+            ? "font-bold text-green-400"
+            : "text-green-400"
+        }
+      >
+        {trade.target2Hit
+          ? "✅ HIT"
+          : trade.target2}
+      </p>
+    </div>
+
+    <div>
+      <p className="text-gray-400">
+        Runner
+      </p>
+
+      <p
+        className={
+          trade.target2Hit
+            ? "font-bold text-cyan-400"
+            : "text-gray-400"
+        }
+      >
+        {trade.target2Hit
+          ? "🏃 ACTIVE"
+          : "🔒 Waiting for T2"}
+      </p>
+    </div>
+
+<div>
+  <p className="text-gray-400">
+    Runner
+  </p>
+
+  <p className="font-bold">
+    {trade.target2Hit
+      ? "🏃 ACTIVE"
+      : "⏳ Waiting"}
+  </p>
+</div>
 
         {/* Trade Timeline */}
 

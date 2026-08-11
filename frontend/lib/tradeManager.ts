@@ -133,13 +133,13 @@ lowestPrice = Math.min(
       (bookedProfit * 0.5).toFixed(2)
     );
 
-    stopLoss = trade.entry;
+stopLoss = trade.target1;
 
-    events = addEvent(
+events = addEvent(
   events,
-  "BREAK_EVEN_ENABLED",
+  "PROFIT_PROTECTION_ENABLED",
   stopLoss,
-  "Stop loss moved to break even"
+  "Remaining position protected at Target 1"
 );
 
     status = "TARGET 1 HIT";
@@ -160,116 +160,424 @@ events = addEvent(
     console.log("🎯 TARGET 1 HIT");
   }
 
-  //--------------------------------------------------
-  // Trailing Stop
-  //--------------------------------------------------
+//--------------------------------------------------
+// Dynamic Profit Protection BEFORE Target 1
+//--------------------------------------------------
 
-  if (trailingStopEnabled) {
+if (!target1Hit) {
 
-    if (trade.action === "BUY") {
+  if (trade.action === "BUY") {
 
-      const newSL =
-        highestPrice - 20;
+    const favorableMove =
+      highestPrice - trade.entry;
 
-      if (newSL > stopLoss) {
+    if (favorableMove >= 30) {
+
+      const protectedSL =
+        trade.entry + 20;
+
+      if (protectedSL > stopLoss) {
+
         stopLoss = Number(
-          newSL.toFixed(2)
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Profit protected after +30 point favorable move"
+        );
+      }
+
+    } else if (favorableMove >= 20) {
+
+      const protectedSL =
+        trade.entry + 10;
+
+      if (protectedSL > stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Profit protected after +20 point favorable move"
+        );
+      }
+
+    } else if (favorableMove >= 10) {
+
+      const protectedSL =
+        trade.entry + 3;
+
+      if (protectedSL > stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Profit protected after +10 point favorable move"
+        );
+      }
+
+    } else if (favorableMove >= 5) {
+
+      const protectedSL =
+        trade.entry;
+
+      if (protectedSL > stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Trade protected at break even after +5 point favorable move"
+        );
+      }
+    }
+
+  } else {
+
+    const favorableMove =
+      trade.entry - lowestPrice;
+
+    if (favorableMove >= 30) {
+
+      const protectedSL =
+        trade.entry - 20;
+
+      if (protectedSL < stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Profit protected after +30 point favorable move"
+        );
+      }
+
+    } else if (favorableMove >= 20) {
+
+      const protectedSL =
+        trade.entry - 10;
+
+      if (protectedSL < stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Profit protected after +20 point favorable move"
+        );
+      }
+
+    } else if (favorableMove >= 10) {
+
+      const protectedSL =
+        trade.entry - 3;
+
+      if (protectedSL < stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Profit protected after +10 point favorable move"
+        );
+      }
+
+    } else if (favorableMove >= 5) {
+
+      const protectedSL =
+        trade.entry;
+
+      if (protectedSL < stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "Trade protected at break even after +5 point favorable move"
+        );
+      }
+    }
+  }
+}
+
+
+//--------------------------------------------------
+// Target 2
+// Activate runner - DO NOT CLOSE TRADE
+//--------------------------------------------------
+
+if (
+  hitTarget2 &&
+  !target2Hit &&
+  status !== "CLOSED"
+) {
+
+  target2Hit = true;
+
+  // Runner starts only after T2
+  trailingStopEnabled = true;
+
+  // Keep remaining 50% open
+  remainingPosition = 50;
+
+  events = addEvent(
+    events,
+    "TARGET2_HIT",
+    currentPrice,
+    "Target 2 reached - runner activated"
+  );
+
+  console.log(
+    "🏃 TARGET 2 HIT - RUNNER ACTIVATED"
+  );
+}
+
+//--------------------------------------------------
+// Runner Protection After Target 2
+//
+// Once Target 2 is hit:
+// BUY  -> remaining 50% is protected at T2
+// SELL -> remaining 50% is protected at T2
+//
+// Runner only starts trailing after price moves
+// 10 points beyond T2.
+//
+// BUY  -> SL follows highestPrice - 20
+// SELL -> SL follows lowestPrice + 20
+//
+// T2 remains the absolute protection floor/ceiling.
+//--------------------------------------------------
+
+if (
+  target2Hit &&
+  partialProfitBooked &&
+  remainingPosition > 0 &&
+  status !== "CLOSED"
+) {
+
+  const runnerActivationDistance = 10;
+  const runnerGiveback = 20;
+
+  if (trade.action === "BUY") {
+
+    // ---------------------------------------------
+    // Phase 1: T2 reached, but price has NOT moved
+    // 10 points beyond T2 yet.
+    //
+    // Protect remaining position exactly at T2.
+    // ---------------------------------------------
+
+    const runnerMove =
+      highestPrice - trade.target2;
+
+    if (runnerMove < runnerActivationDistance) {
+
+      if (stopLoss < trade.target2) {
+
+        stopLoss = Number(
+          trade.target2.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "BUY runner protected at Target 2"
+        );
+
+        console.log(
+          "🛡️ BUY RUNNER PROTECTED AT T2:",
+          stopLoss
         );
       }
 
     } else {
 
-      const newSL =
-        lowestPrice + 20;
+      // ---------------------------------------------
+      // Phase 2: Price moved at least +10 beyond T2.
+      //
+      // Now trailing protection becomes active.
+      // ---------------------------------------------
 
-      if (newSL < stopLoss) {
+      const runnerSL =
+        highestPrice - runnerGiveback;
+
+      // NEVER allow SL below T2
+      const protectedSL =
+        Math.max(
+          trade.target2,
+          runnerSL
+        );
+
+      if (protectedSL > stopLoss) {
+
         stopLoss = Number(
-          newSL.toFixed(2)
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "BUY runner trailing protection updated"
+        );
+
+        console.log(
+          "🏃 BUY RUNNER TRAILING:",
+          {
+            highestPrice,
+            runnerMove,
+            runnerSL,
+            protectedSL,
+          }
+        );
+      }
+    }
+
+  } else {
+
+    // ---------------------------------------------
+    // SELL RUNNER
+    // ---------------------------------------------
+
+    const runnerMove =
+      trade.target2 - lowestPrice;
+
+    // ---------------------------------------------
+    // Phase 1: T2 reached, but price has NOT moved
+    // 10 points beyond T2 yet.
+    //
+    // Protect remaining position exactly at T2.
+    // ---------------------------------------------
+
+    if (runnerMove < runnerActivationDistance) {
+
+      if (stopLoss > trade.target2) {
+
+        stopLoss = Number(
+          trade.target2.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "SELL runner protected at Target 2"
+        );
+
+        console.log(
+          "🛡️ SELL RUNNER PROTECTED AT T2:",
+          stopLoss
         );
       }
 
+    } else {
+
+      // ---------------------------------------------
+      // Phase 2: Price moved at least 10 points
+      // beyond T2.
+      //
+      // Now trailing protection becomes active.
+      // ---------------------------------------------
+
+      const runnerSL =
+        lowestPrice + runnerGiveback;
+
+      // NEVER allow SL above T2
+      const protectedSL =
+        Math.min(
+          trade.target2,
+          runnerSL
+        );
+
+      if (protectedSL < stopLoss) {
+
+        stopLoss = Number(
+          protectedSL.toFixed(2)
+        );
+
+        events = addEvent(
+          events,
+          "PROFIT_PROTECTION_ENABLED",
+          stopLoss,
+          "SELL runner trailing protection updated"
+        );
+
+        console.log(
+          "🏃 SELL RUNNER TRAILING:",
+          {
+            lowestPrice,
+            runnerMove,
+            runnerSL,
+            protectedSL,
+          }
+        );
+      }
     }
-
   }
-
-  //--------------------------------------------------
-  // Recalculate Stop after trailing
-  //--------------------------------------------------
-
-  const hitStopLoss =
-    trade.action === "BUY"
-      ? currentPrice <= stopLoss
-      : currentPrice >= stopLoss;
-
-  //--------------------------------------------------
-  // Target2
-  //--------------------------------------------------
-
-if (
-  hitTarget2 &&
-  !target2Hit
-) {
-
-  target2Hit = true;
-
-  // Calculate final realized profit
-  if (partialProfitBooked) {
-
-    const remainingProfit =
-      trade.action === "BUY"
-        ? trade.target2 - trade.entry
-        : trade.entry - trade.target2;
-
-    realizedPnL = Number(
-      (
-        realizedPnL +
-        remainingProfit * 0.5
-      ).toFixed(2)
-    );
-
-  } else {
-
-    realizedPnL = pnl;
-
-  }
-
-  status = "CLOSED";
-
-  result = "WIN";
-
-  closedAt = new Date();
-
-  events = addEvent(
-  events,
-  "TARGET2_HIT",
-  currentPrice,
-  "Target 2 reached"
-);
-
-events = addEvent(
-  events,
-  "TRADE_CLOSED",
-  currentPrice,
-  "Trade closed at Target 2"
-);
-
-  console.log("🏆 TARGET 2 HIT");
-
 }
 
-  //--------------------------------------------------
-  // Stop Loss
-  //--------------------------------------------------
+//--------------------------------------------------
+// Final Stop Loss Check
+//--------------------------------------------------
 
-if (hitStopLoss) {
+const hitStopLoss =
+  status !== "CLOSED" &&
+  (
+    trade.action === "BUY"
+      ? currentPrice <= stopLoss
+      : currentPrice >= stopLoss
+  );
+
+  const stopExecutionPrice = hitStopLoss
+  ? stopLoss
+  : currentPrice;
+
+//--------------------------------------------------
+// Stop Loss
+//--------------------------------------------------
+
+if (hitStopLoss && status !== "CLOSED") {
 
   // Calculate final realized profit
   if (partialProfitBooked) {
 
-    const remainingProfit =
-      trade.action === "BUY"
-        ? currentPrice - trade.entry
-        : trade.entry - currentPrice;
+const remainingProfit =
+  trade.action === "BUY"
+    ? stopExecutionPrice - trade.entry
+    : trade.entry - stopExecutionPrice;
 
     realizedPnL = Number(
       (
@@ -280,7 +588,10 @@ if (hitStopLoss) {
 
   } else {
 
-    realizedPnL = pnl;
+  realizedPnL =
+  trade.action === "BUY"
+    ? stopExecutionPrice - trade.entry
+    : trade.entry - stopExecutionPrice;
 
   }
 
@@ -291,63 +602,130 @@ if (hitStopLoss) {
       ? "WIN"
       : "LOSS";
 
+  remainingPosition = 0;
+  trailingStopEnabled = false;
+
   closedAt = new Date();
 
+  const profitProtected =
+  trade.action === "BUY"
+    ? stopLoss >= trade.entry
+    : stopLoss <= trade.entry;
+
+  console.log("🧪 CLOSE CLASSIFICATION:", {
+  action: trade.action,
+  entry: trade.entry,
+  currentPrice,
+  stopLoss,
+  profitProtected,
+  partialProfitBooked,
+  target2Hit,
+});
+
+if (
+  profitProtected ||
+  partialProfitBooked ||
+  target2Hit
+) {
+
   events = addEvent(
-  events,
-  "STOP_LOSS_HIT",
-  currentPrice,
-  "Stop loss triggered"
-);
+    events,
+    "PROFIT_PROTECTION_ENABLED",
+    stopExecutionPrice,
+    "Trade closed by protected stop"
+  );
 
-events = addEvent(
-  events,
-  "TRADE_CLOSED",
-  currentPrice,
-  "Trade closed by stop loss"
-);
+  events = addEvent(
+    events,
+    "TRADE_CLOSED",
+    stopExecutionPrice,
+    "Trade closed by profit protection"
+  );
 
-  console.log("🛑 STOP LOSS HIT");
+  console.log(
+    "🛡️ PROFIT PROTECTION EXIT"
+  );
+
+} else {
+
+  events = addEvent(
+    events,
+    "STOP_LOSS_HIT",
+    stopExecutionPrice,
+    "Stop loss triggered"
+  );
+
+  events = addEvent(
+    events,
+    "TRADE_CLOSED",
+    stopExecutionPrice,
+    "Trade closed by stop loss"
+  );
+
+  console.log(
+    "🛑 STOP LOSS HIT"
+  );
 
 }
 
-console.log("RETURNING realizedPnL =", realizedPnL);
-console.log("RETURNING pnl =", pnl);
+}
 
-  return {
+//--------------------------------------------------
+// Final return
+//--------------------------------------------------
 
-    ...trade,
+console.log(
+  "RETURNING realizedPnL =",
+  realizedPnL
+);
 
-    currentPrice,
+console.log(
+  "RETURNING pnl =",
+  pnl
+);
 
-    pnl,
+return {
+  ...trade,
 
-    status,
+  currentPrice: hitStopLoss
+    ? stopExecutionPrice
+    : currentPrice,
 
-    result,
+  pnl: hitStopLoss
+    ? Number(
+        (
+          trade.action === "BUY"
+            ? stopExecutionPrice - trade.entry
+            : trade.entry - stopExecutionPrice
+        ).toFixed(2)
+      )
+    : pnl,
 
-    closedAt,
+  status,
 
-    stopLoss,
+  result,
 
-    target1Hit,
+  closedAt,
 
-    target2Hit,
+  stopLoss,
 
-    partialProfitBooked,
+  target1Hit,
 
-    remainingPosition,
+  target2Hit,
 
-    realizedPnL,
+  partialProfitBooked,
 
-    highestPrice,
+  remainingPosition,
 
-    lowestPrice,
+  realizedPnL,
 
-    trailingStopEnabled,
+  highestPrice,
 
-    events,
+  lowestPrice,
 
-  };
+  trailingStopEnabled,
+
+  events,
+};
 
 }
