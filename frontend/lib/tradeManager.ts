@@ -171,10 +171,11 @@ if (!target1Hit) {
     const favorableMove =
       highestPrice - trade.entry;
 
-    if (favorableMove >= 30) {
+    // +25 points → lock +15
+    if (favorableMove >= 25) {
 
       const protectedSL =
-        trade.entry + 20;
+        trade.entry + 15;
 
       if (protectedSL > stopLoss) {
 
@@ -186,14 +187,15 @@ if (!target1Hit) {
           events,
           "PROFIT_PROTECTION_ENABLED",
           stopLoss,
-          "Profit protected after +30 point favorable move"
+          "Profit protected after +25 point favorable move"
         );
       }
 
-    } else if (favorableMove >= 20) {
+    // +15 points → lock +5
+    } else if (favorableMove >= 15) {
 
       const protectedSL =
-        trade.entry + 10;
+        trade.entry + 5;
 
       if (protectedSL > stopLoss) {
 
@@ -205,30 +207,12 @@ if (!target1Hit) {
           events,
           "PROFIT_PROTECTION_ENABLED",
           stopLoss,
-          "Profit protected after +20 point favorable move"
+          "Profit protected after +15 point favorable move"
         );
       }
 
-    } else if (favorableMove >= 10) {
-
-      const protectedSL =
-        trade.entry + 3;
-
-      if (protectedSL > stopLoss) {
-
-        stopLoss = Number(
-          protectedSL.toFixed(2)
-        );
-
-        events = addEvent(
-          events,
-          "PROFIT_PROTECTION_ENABLED",
-          stopLoss,
-          "Profit protected after +10 point favorable move"
-        );
-      }
-
-    } else if (favorableMove >= 5) {
+    // +8 points → move to breakeven
+    } else if (favorableMove >= 8) {
 
       const protectedSL =
         trade.entry;
@@ -243,7 +227,7 @@ if (!target1Hit) {
           events,
           "PROFIT_PROTECTION_ENABLED",
           stopLoss,
-          "Trade protected at break even after +5 point favorable move"
+          "Trade protected at break even after +8 point favorable move"
         );
       }
     }
@@ -253,10 +237,11 @@ if (!target1Hit) {
     const favorableMove =
       trade.entry - lowestPrice;
 
-    if (favorableMove >= 30) {
+    // +25 points → lock +15
+    if (favorableMove >= 25) {
 
       const protectedSL =
-        trade.entry - 20;
+        trade.entry - 15;
 
       if (protectedSL < stopLoss) {
 
@@ -268,14 +253,15 @@ if (!target1Hit) {
           events,
           "PROFIT_PROTECTION_ENABLED",
           stopLoss,
-          "Profit protected after +30 point favorable move"
+          "Profit protected after +25 point favorable move"
         );
       }
 
-    } else if (favorableMove >= 20) {
+    // +15 points → lock +5
+    } else if (favorableMove >= 15) {
 
       const protectedSL =
-        trade.entry - 10;
+        trade.entry - 5;
 
       if (protectedSL < stopLoss) {
 
@@ -287,30 +273,12 @@ if (!target1Hit) {
           events,
           "PROFIT_PROTECTION_ENABLED",
           stopLoss,
-          "Profit protected after +20 point favorable move"
+          "Profit protected after +15 point favorable move"
         );
       }
 
-    } else if (favorableMove >= 10) {
-
-      const protectedSL =
-        trade.entry - 3;
-
-      if (protectedSL < stopLoss) {
-
-        stopLoss = Number(
-          protectedSL.toFixed(2)
-        );
-
-        events = addEvent(
-          events,
-          "PROFIT_PROTECTION_ENABLED",
-          stopLoss,
-          "Profit protected after +10 point favorable move"
-        );
-      }
-
-    } else if (favorableMove >= 5) {
+    // +8 points → breakeven
+    } else if (favorableMove >= 8) {
 
       const protectedSL =
         trade.entry;
@@ -325,13 +293,12 @@ if (!target1Hit) {
           events,
           "PROFIT_PROTECTION_ENABLED",
           stopLoss,
-          "Trade protected at break even after +5 point favorable move"
+          "Trade protected at break even after +8 point favorable move"
         );
       }
     }
   }
 }
-
 
 //--------------------------------------------------
 // Target 2
@@ -595,12 +562,12 @@ const remainingProfit =
 
   }
 
-  status = "CLOSED";
-
-  result =
-    realizedPnL >= 0
-      ? "WIN"
-      : "LOSS";
+result =
+  realizedPnL > 0
+    ? "WIN"
+    : realizedPnL < 0
+    ? "LOSS"
+    : "BREAKEVEN";
 
   remainingPosition = 0;
   trailingStopEnabled = false;

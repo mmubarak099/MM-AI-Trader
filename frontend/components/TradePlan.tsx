@@ -1,9 +1,9 @@
+"use client";
+
 import { useEffect, useState } from "react";
 
-import type { TradeSignal } from "../types/tradeSignal";
-
 type Props = {
-  signal: TradeSignal | null;
+  signal: any;
   onTakeTrade: () => void;
 };
 
@@ -12,139 +12,265 @@ export default function TradePlan({
   onTakeTrade,
 }: Props) {
 
-  if (!signal) return null;
-  const [remaining, setRemaining] =
-  useState("");
+  const [timeRemaining, setTimeRemaining] =
+    useState("");
+
+  const [expired, setExpired] =
+    useState(false);
+
+
+  // ===============================
+  // SIGNAL COUNTDOWN
+  // ===============================
 
   useEffect(() => {
 
-  if (!signal) {
-    setRemaining("-");
-    return;
-  }
-
-  const updateCountdown = () => {
-
-    const diff =
-      signal.expiresAt.getTime() - Date.now();
-
-    if (diff <= 0) {
-
-      setRemaining("Expired");
-
+    if (!signal?.expiresAt) {
+      setTimeRemaining("-");
+      setExpired(false);
       return;
-
     }
 
-    const minutes =
-      Math.floor(diff / 60000);
+    const updateTimer = () => {
 
-    const seconds =
-      Math.floor((diff % 60000) / 1000);
+      const remaining =
+        new Date(signal.expiresAt).getTime() -
+        Date.now();
 
-    setRemaining(
-      `${minutes}m ${seconds}s`
-    );
+      if (remaining <= 0) {
 
-  };
+        setTimeRemaining("Expired");
+        setExpired(true);
 
-  updateCountdown();
+        return;
+      }
 
-  const timer =
-    setInterval(updateCountdown, 1000);
+      const minutes =
+        Math.floor(remaining / 60000);
 
-  return () => clearInterval(timer);
+      const seconds =
+        Math.floor(
+          (remaining % 60000) / 1000
+        );
 
-}, [signal]);
+      setTimeRemaining(
+        `${minutes}m ${seconds
+          .toString()
+          .padStart(2, "0")}s`
+      );
+
+      setExpired(false);
+    };
+
+    updateTimer();
+
+    const timer =
+      setInterval(updateTimer, 1000);
+
+    return () =>
+      clearInterval(timer);
+
+  }, [signal]);
+
+
+  if (!signal) return null;
+
+
+  // ===============================
+  // HELPERS
+  // ===============================
+
+  const actionColor =
+    signal.action === "BUY"
+      ? "text-green-400"
+      : signal.action === "SELL"
+      ? "text-red-400"
+      : "text-yellow-400";
+
+  const urgencyColor =
+    signal.urgency === "HIGH"
+      ? "text-red-400"
+      : signal.urgency === "MEDIUM"
+      ? "text-yellow-400"
+      : "text-green-400";
+
 
   return (
-    <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-      <h3 className="text-xl font-bold mb-4">
-        Trade Plan
-      </h3>
+    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* ================= HEADER ================= */}
 
-        <div>
-          <p className="text-gray-400">Action</p>
-          <p className="font-bold">{signal.action}</p>
-        </div>
+      <div className="flex items-center justify-between mb-4">
 
-        <div>
-          <p className="text-gray-400">Entry</p>
-          <p>{signal.entry}</p>
-        </div>
+        <h3 className="text-base font-semibold">
+          Trade Plan
+        </h3>
 
-        <div>
-          <p className="text-gray-400">Stop Loss</p>
-          <p className="text-red-400">{signal.stopLoss}</p>
-        </div>
+        <span
+          className={`text-xs font-semibold ${
+            expired
+              ? "text-red-400"
+              : "text-green-400"
+          }`}
+        >
+          {expired ? "Expired" : "Valid"}
+        </span>
 
-        <div>
-          <p className="text-gray-400">Target 1</p>
-          <p className="text-green-400">{signal.target1}</p>
-        </div>
+      </div>
 
-        <div>
-          <p className="text-gray-400">Target 2</p>
-          <p className="text-green-400">{signal.target2}</p>
-        </div>
+
+      {/* ================= MAIN DETAILS ================= */}
+
+      <div className="grid grid-cols-2 gap-x-5 gap-y-3">
+
+        {/* ACTION */}
 
         <div>
-          <p className="text-gray-400">Risk / Reward</p>
-          <p>{"1 : 1.5"}</p>
+          <p className="text-xs text-gray-500">
+            Action
+          </p>
+
+          <p
+            className={`text-base font-bold mt-0.5 ${actionColor}`}
+          >
+            {signal.action}
+          </p>
         </div>
+
+
+        {/* ENTRY */}
 
         <div>
-          <p className="text-gray-400">Urgency</p>
-          <p>{signal.urgency}</p>
+          <p className="text-xs text-gray-500">
+            Entry
+          </p>
+
+          <p className="text-sm font-semibold text-white mt-0.5">
+            {Number(signal.entry).toFixed(2)}
+          </p>
         </div>
-<div>
 
-  <p className="text-gray-400">
-    Signal Status
-  </p>
 
-  <p
-    className={
-      remaining === "Expired"
-        ? "text-red-400 font-bold"
-        : "text-green-400 font-bold"
-    }
-  >
-    {remaining === "Expired"
-      ? "Expired"
-      : "Valid"}
-  </p>
+        {/* STOP LOSS */}
 
-</div>
+        <div>
+          <p className="text-xs text-gray-500">
+            Stop Loss
+          </p>
 
-<div>
+          <p className="text-sm font-semibold text-red-400 mt-0.5">
+            {Number(signal.stopLoss).toFixed(2)}
+          </p>
+        </div>
 
-  <p className="text-gray-400">
-    Time Remaining
-  </p>
 
-  <p className="font-bold">
-    {remaining}
-  </p>
+        {/* TARGET 1 */}
 
-</div>
+        <div>
+          <p className="text-xs text-gray-500">
+            Target 1
+          </p>
 
-</div>
+          <p className="text-sm font-semibold text-green-400 mt-0.5">
+            {Number(signal.target1).toFixed(2)}
+          </p>
+        </div>
 
-<div className="mt-6">
 
-  <button
-    onClick={onTakeTrade}
-    className="w-full rounded-lg bg-green-600 hover:bg-green-700 py-3 font-semibold transition"
-  >
-    ✅ Take Trade
-  </button>
+        {/* TARGET 2 */}
 
-</div>
+        <div>
+          <p className="text-xs text-gray-500">
+            Target 2
+          </p>
 
-</div>
+          <p className="text-sm font-semibold text-green-400 mt-0.5">
+            {Number(signal.target2).toFixed(2)}
+          </p>
+        </div>
 
+
+        {/* RISK / REWARD */}
+
+        <div>
+          <p className="text-xs text-gray-500">
+            Risk / Reward
+          </p>
+
+          <p className="text-sm font-semibold text-yellow-400 mt-0.5">
+            1 : 1.5
+          </p>
+        </div>
+
+
+        {/* URGENCY */}
+
+        <div>
+          <p className="text-xs text-gray-500">
+            Urgency
+          </p>
+
+          <p
+            className={`text-sm font-semibold mt-0.5 ${urgencyColor}`}
+          >
+            {signal.urgency}
+          </p>
+        </div>
+
+
+        {/* CONFIDENCE */}
+
+        <div>
+          <p className="text-xs text-gray-500">
+            Confidence
+          </p>
+
+          <p className="text-sm font-semibold text-cyan-400 mt-0.5">
+            {signal.confidence}%
+          </p>
+        </div>
+
+      </div>
+
+
+      {/* ================= EXPIRY ================= */}
+
+      <div className="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
+
+        <span className="text-xs text-gray-500">
+          Time Remaining
+        </span>
+
+        <span
+          className={`text-sm font-bold ${
+            expired
+              ? "text-red-400"
+              : "text-green-400"
+          }`}
+        >
+          {timeRemaining}
+        </span>
+
+      </div>
+
+
+      {/* ================= TAKE TRADE ================= */}
+
+      <button
+        type="button"
+        onClick={onTakeTrade}
+        disabled={expired}
+        className={`w-full mt-4 py-2 rounded-lg text-sm font-semibold transition ${
+          expired
+            ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-500 text-white"
+        }`}
+      >
+        {expired
+          ? "Signal Expired"
+          : "✅ Take Trade"}
+      </button>
+
+    </div>
   );
 }

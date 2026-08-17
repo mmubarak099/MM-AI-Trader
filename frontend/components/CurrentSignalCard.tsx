@@ -8,140 +8,173 @@ export default function CurrentSignalCard({
   signal,
 }: Props) {
 
-  if (!signal) return null;
-
   const [remaining, setRemaining] =
-  useState("");
+    useState("");
 
-useEffect(() => {
+  useEffect(() => {
 
-  if (!signal.expiresAt) return;
-
-  const updateCountdown = () => {
-
-    const diff =
-      new Date(signal.expiresAt).getTime() -
-      Date.now();
-
-    if (diff <= 0) {
-
-      setRemaining("Expired");
-
+    if (!signal?.expiresAt) {
+      setRemaining("");
       return;
-
     }
 
-    const minutes =
-      Math.floor(diff / 60000);
+    const updateCountdown = () => {
 
-    const seconds =
-      Math.floor((diff % 60000) / 1000);
+      const diff =
+        new Date(signal.expiresAt).getTime() -
+        Date.now();
 
-    setRemaining(
-      `${minutes}:${seconds
-        .toString()
-        .padStart(2, "0")}`
-    );
+      if (diff <= 0) {
+        setRemaining("Expired");
+        return;
+      }
 
-  };
+      const minutes =
+        Math.floor(diff / 60000);
 
-  updateCountdown();
+      const seconds =
+        Math.floor(
+          (diff % 60000) / 1000
+        );
 
-  const timer =
-    setInterval(updateCountdown, 1000);
+      setRemaining(
+        `${minutes}:${seconds
+          .toString()
+          .padStart(2, "0")}`
+      );
 
-  return () => clearInterval(timer);
+    };
 
-}, [signal]);
+    updateCountdown();
+
+    const timer =
+      setInterval(updateCountdown, 1000);
+
+    return () =>
+      clearInterval(timer);
+
+  }, [signal]);
+
+  if (!signal) return null;
 
   return (
+    <div className="bg-blue-950/60 border border-blue-500 rounded-xl p-4">
 
-    <div className="bg-blue-950 border-2 border-blue-500 rounded-xl p-6 mb-6">
+      {/* HEADER */}
 
-      <h2 className="text-2xl font-bold text-blue-300 mb-4">
+      <div className="flex items-center justify-between mb-3">
 
-        🚨 CURRENT SIGNAL
+        <h2 className="text-base font-semibold text-blue-300">
+          🚨 Current Signal
+        </h2>
 
-      </h2>
+        <span
+          className={`text-xs font-semibold ${
+            remaining === "Expired"
+              ? "text-red-400"
+              : "text-green-400"
+          }`}
+        >
+          {remaining || "-"}
+        </span>
 
-     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      </div>
 
-  <div>
 
-    <p className="text-gray-400">
-      Action
-    </p>
+      {/* MAIN SIGNAL */}
 
-    <p
-      className={`text-3xl font-bold ${
-        signal.action === "BUY"
-          ? "text-green-400"
-          : "text-red-400"
-      }`}
-    >
-      {signal.action}
-    </p>
+      <div className="grid grid-cols-2 gap-2">
 
-  </div>
+        <div className="bg-gray-900/60 rounded-lg px-3 py-2">
 
-  <div>
+          <p className="text-gray-500 text-xs">
+            Action
+          </p>
 
-    <p className="text-gray-400">
-      Confidence
-    </p>
+          <p
+            className={`text-lg font-bold mt-1 ${
+              signal.action === "BUY"
+                ? "text-green-400"
+                : signal.action === "SELL"
+                ? "text-red-400"
+                : "text-yellow-400"
+            }`}
+          >
+            {signal.action}
+          </p>
 
-    <p className="text-3xl font-bold text-yellow-400">
-      {signal.confidence}%
-    </p>
+        </div>
 
-  </div>
 
-  <div>
+        <div className="bg-gray-900/60 rounded-lg px-3 py-2">
 
-    <p className="text-gray-400">
-      Entry
-    </p>
+          <p className="text-gray-500 text-xs">
+            Confidence
+          </p>
 
-    <p className="text-2xl font-bold">
-      {signal.entry}
-    </p>
+          <p className="text-lg font-bold text-yellow-400 mt-1">
+            {signal.confidence}%
+          </p>
 
-  </div>
+        </div>
 
-  <div>
 
-    <p className="text-gray-400">
-      Urgency
-    </p>
+        <div className="bg-gray-900/60 rounded-lg px-3 py-2">
 
-    <p className="text-2xl font-bold">
-      {signal.urgency}
-    </p>
+          <p className="text-gray-500 text-xs">
+            Entry
+          </p>
 
-  </div>
+          <p className="text-sm font-bold text-white mt-1">
+            {Number(signal.entry).toFixed(2)}
+          </p>
 
-<div>
+        </div>
 
-  <p className="text-gray-400">
-    Signal Expires
-  </p>
 
-  <p
-    className={`text-2xl font-bold ${
-      remaining === "Expired"
-        ? "text-red-400"
-        : "text-green-400"
-    }`}
-  >
-    {remaining}
-  </p>
+        <div className="bg-gray-900/60 rounded-lg px-3 py-2">
 
-</div>
+          <p className="text-gray-500 text-xs">
+            Urgency
+          </p>
 
-</div>
+          <p
+            className={`text-sm font-bold mt-1 ${
+              signal.urgency === "HIGH"
+                ? "text-red-400"
+                : signal.urgency === "MEDIUM"
+                ? "text-yellow-400"
+                : "text-green-400"
+            }`}
+          >
+            {signal.urgency}
+          </p>
+
+        </div>
+
+      </div>
+
+
+      {/* EXPIRY */}
+
+      <div className="mt-3 pt-3 border-t border-blue-900 flex items-center justify-between">
+
+        <span className="text-gray-500 text-xs">
+          Signal Expires
+        </span>
+
+        <span
+          className={`text-sm font-bold ${
+            remaining === "Expired"
+              ? "text-red-400"
+              : "text-green-400"
+          }`}
+        >
+          {remaining || "-"}
+        </span>
+
+      </div>
 
     </div>
-
   );
-
 }

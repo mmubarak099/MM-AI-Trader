@@ -24,6 +24,10 @@ export interface TradeSignal {
 
   urgency: string;
 
+  riskRewardRatio: number;
+
+  confirmationCount: number;
+
   status:
     | "ACTIVE"
     | "TAKEN"
@@ -33,4 +37,11 @@ export interface TradeSignal {
 
   expiresAt: Date;
 
+  pattern: string;
+
+  marketStructure: string;
+
+  breakout: string;
+
+  volumeStrength: string;
 }

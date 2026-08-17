@@ -13,7 +13,8 @@ export type TradeStatus =
 export type TradeResult =
   | "WIN"
   | "LOSS"
-  | "NONE";
+  | "NONE"
+  | "BREAKEVEN";;
 
 export type TradeUrgency =
   | "LOW"
@@ -58,6 +59,8 @@ export interface Trade {
   remainingPosition: number;
 
   realizedPnL: number;
+
+  unrealizedPnL: number;
 
   highestPrice: number;
 

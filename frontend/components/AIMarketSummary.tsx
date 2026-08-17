@@ -9,6 +9,7 @@ export default function AIMarketSummary({
   confidence,
   action,
 }: AIMarketSummaryProps) {
+
   const actionColor =
     action === "BUY"
       ? "text-green-400"
@@ -19,43 +20,61 @@ export default function AIMarketSummary({
       : "text-yellow-400";
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mt-8">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 mt-4">
 
-      <h2 className="text-xl font-bold mb-4">
-        🤖 AI Market Summary
-      </h2>
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-3">
 
-      <div className="flex justify-between mb-4">
+        <h2 className="text-base font-semibold">
+          🤖 AI Market Summary
+        </h2>
+
+        <span
+          className={`text-sm font-bold ${actionColor}`}
+        >
+          {action}
+        </span>
+
+      </div>
+
+
+      {/* SUMMARY METRICS */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
 
         <div>
-
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-500 text-xs">
             Recommendation
           </p>
 
-          <p className={`text-2xl font-bold ${actionColor}`}>
+          <p
+            className={`text-sm font-bold mt-0.5 ${actionColor}`}
+          >
             {action}
           </p>
-
         </div>
 
-        <div className="text-right">
 
-          <p className="text-gray-400 text-sm">
+        <div className="text-right">
+          <p className="text-gray-500 text-xs">
             Confidence
           </p>
 
-          <p className="text-2xl font-bold text-cyan-400">
+          <p className="text-sm font-bold text-cyan-400 mt-0.5">
             {confidence}%
           </p>
-
         </div>
 
       </div>
 
-      <p className="text-gray-300 leading-7">
-        {summary}
-      </p>
+
+      {/* SUMMARY TEXT */}
+      <div className="pt-3 border-t border-gray-800">
+
+        <p className="text-gray-300 text-xs leading-5">
+          {summary}
+        </p>
+
+      </div>
 
     </div>
   );

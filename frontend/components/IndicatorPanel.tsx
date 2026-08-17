@@ -14,83 +14,144 @@ export default function IndicatorPanel({
   vwap,
 }: IndicatorPanelProps) {
 
-const getRsiColor = () => {
-  if (rsi === null) {
-    return "text-gray-400";
-  }
+  const getRsiColor = () => {
+    if (rsi === null) {
+      return "text-gray-500";
+    }
 
-  if (rsi >= 70) return "text-red-400";
+    if (rsi >= 70) return "text-red-400";
+    if (rsi <= 30) return "text-green-400";
 
-  if (rsi <= 30) return "text-green-400";
-
-  return "text-yellow-400";
-};
+    return "text-yellow-400";
+  };
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-6 mt-8">
+    <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3 mt-5">
 
-      <h2 className="text-xl font-bold mb-6">
+      <h2 className="text-base font-semibold mb-3">
         Technical Indicators
       </h2>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-5">
 
-        <div>
-          <p className="text-gray-400 text-sm">
+        {/* RSI */}
+        <div className="min-w-0 px-3 first:pl-0">
+
+          <p className="text-gray-500 text-xs">
             RSI
           </p>
 
-          <p className={`text-2xl font-bold ${getRsiColor()}`}>
-            {rsi?.toFixed(1) ?? "Calculating..."}
+          <p
+            className={`text-lg font-bold mt-1 truncate ${getRsiColor()}`}
+            title={
+              rsi !== null
+                ? rsi.toFixed(1)
+                : "Calculating"
+            }
+          >
+            {rsi !== null
+              ? rsi.toFixed(1)
+              : "—"}
           </p>
+
         </div>
 
-        <div>
-          <p className="text-gray-400 text-sm">
+
+        {/* EMA 20 */}
+        <div className="min-w-0 px-3 border-l border-gray-700">
+
+          <p className="text-gray-500 text-xs">
             EMA 20
           </p>
 
-          <p className="text-blue-400 text-2xl font-bold">
-            {ema20?.toFixed(2) ?? "Calculating..."}
+          <p
+            className="text-blue-400 text-lg font-bold mt-1 truncate"
+            title={
+              ema20 !== null
+                ? ema20.toFixed(2)
+                : "Calculating"
+            }
+          >
+            {ema20 !== null
+              ? ema20.toFixed(2)
+              : "—"}
           </p>
+
         </div>
 
-        <div>
-          <p className="text-gray-400 text-sm">
+
+        {/* EMA 50 */}
+        <div className="min-w-0 px-3 border-l border-gray-700">
+
+          <p className="text-gray-500 text-xs">
             EMA 50
           </p>
 
-          <p className="text-green-400 text-2xl font-bold">
-            {ema50?.toFixed(2) ?? "Calculating..."}
+          <p
+            className="text-green-400 text-lg font-bold mt-1 truncate"
+            title={
+              ema50 !== null
+                ? ema50.toFixed(2)
+                : "Calculating"
+            }
+          >
+            {ema50 !== null
+              ? ema50.toFixed(2)
+              : "—"}
           </p>
+
         </div>
 
-        <div>
-          <p className="text-gray-400 text-sm">
+
+        {/* MACD */}
+        <div className="min-w-0 px-3 border-l border-gray-700">
+
+          <p className="text-gray-500 text-xs">
             MACD
           </p>
 
           <p
-            className={`text-2xl font-bold ${
-  macd === null
-    ? "text-gray-400"
-    : macd >= 0
-    ? "text-green-400"
-    : "text-red-400"
-}`}
+            className={`text-lg font-bold mt-1 truncate ${
+              macd === null
+                ? "text-gray-500"
+                : macd >= 0
+                ? "text-green-400"
+                : "text-red-400"
+            }`}
+            title={
+              macd !== null
+                ? macd.toFixed(2)
+                : "Calculating"
+            }
           >
-            {macd?.toFixed(2) ?? "Calculating..."}
+            {macd !== null
+              ? macd.toFixed(2)
+              : "—"}
           </p>
+
         </div>
 
-        <div>
-          <p className="text-gray-400 text-sm">
+
+        {/* VWAP */}
+        <div className="min-w-0 pl-3 border-l border-gray-700">
+
+          <p className="text-gray-500 text-xs">
             VWAP
           </p>
 
-          <p className="text-purple-400 text-2xl font-bold">
-            {vwap?.toFixed(2) ?? "Calculating..."}
+          <p
+            className="text-purple-400 text-lg font-bold mt-1 truncate"
+            title={
+              vwap !== null
+                ? vwap.toFixed(2)
+                : "Calculating"
+            }
+          >
+            {vwap !== null
+              ? vwap.toFixed(2)
+              : "—"}
           </p>
+
         </div>
 
       </div>

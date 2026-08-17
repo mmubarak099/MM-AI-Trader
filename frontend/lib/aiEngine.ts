@@ -16,10 +16,10 @@ volumeStrength: string;
 }
 
 
-
 export function analyzeMarket(
   data: MarketInput
 ): {
+  
   trend: string;
   confidence: number;
   tradeQuality: string;
@@ -44,7 +44,19 @@ export function analyzeMarket(
   };
 } {
 
-
+  console.log("🤖 V1 INPUT:", {
+    price: data.price,
+    previousPrice: data.previousPrice,
+    trend: data.trend,
+    rsi: data.rsi,
+    ema20: data.ema20,
+    ema50: data.ema50,
+    macd: data.macd,
+    pattern: data.pattern,
+    breakout: data.breakout,
+    volumeStrength: data.volumeStrength,
+    marketStructure: data.marketStructure,
+  });
 
   const movement =
     Number(
@@ -128,7 +140,7 @@ if (data.pattern === "No Pattern") {
 
 }
 
-  // ===============================
+// ===============================
 // Market Regime Engine
 // ===============================
 
@@ -163,6 +175,13 @@ else if (
 
 }
 
+console.log("🏛️ MARKET REGIME CHECK:", {
+  trend: data.trend,
+  marketStructure: data.marketStructure,
+  movement,
+  marketRegime,
+});
+
   // ======================================
 // Market Filter Engine
 // ======================================
@@ -194,51 +213,127 @@ const distanceToSupport =
     : null;
 
 // ===============================
-// AI Confluence Bonus
+// Directional Confirmation Engine
 // ===============================
 
-let confirmationScore = 0;
+let bullishConfirmationScore = 0;
+let bearishConfirmationScore = 0;
+
+// ---------- BULLISH ----------
 
 if (data.trend === "Bullish")
-  confirmationScore += 30;
+  bullishConfirmationScore += 30;
 
 if (data.breakout === "BREAKOUT")
-  confirmationScore += 25;
+  bullishConfirmationScore += 25;
 
 if (data.volumeStrength === "HIGH")
-  confirmationScore += 15;
+  bullishConfirmationScore += 15;
 
 if (
   data.rsi !== null &&
   data.rsi > 50 &&
   data.rsi < 70
 )
-  confirmationScore += 10;
+  bullishConfirmationScore += 10;
 
 if (
   data.ema20 !== null &&
   data.ema50 !== null &&
   data.ema20 > data.ema50
 )
-  confirmationScore += 10;
+  bullishConfirmationScore += 10;
 
-if (data.pattern !== "No Pattern")
-  confirmationScore += 10;
+if (
+  data.pattern === "Bullish Engulfing" ||
+  data.pattern === "Hammer"
+)
+  bullishConfirmationScore += 10;
 
-if (confirmationScore >= 70) {
+
+// ---------- BEARISH ----------
+
+if (data.trend === "Bearish")
+  bearishConfirmationScore += 30;
+
+if (data.breakout === "BREAKDOWN")
+  bearishConfirmationScore += 25;
+
+if (data.volumeStrength === "HIGH")
+  bearishConfirmationScore += 15;
+
+if (
+  data.rsi !== null &&
+  data.rsi < 50 &&
+  data.rsi > 30
+)
+  bearishConfirmationScore += 10;
+
+if (
+  data.ema20 !== null &&
+  data.ema50 !== null &&
+  data.ema20 < data.ema50
+)
+  bearishConfirmationScore += 10;
+
+if (data.pattern === "Bearish Engulfing")
+  bearishConfirmationScore += 10;
+
+
+// ---------- Direction ----------
+
+const confirmationScore =
+  data.trend === "Bearish"
+    ? bearishConfirmationScore
+    : data.trend === "Bullish"
+      ? bullishConfirmationScore
+      : Math.max(
+          bullishConfirmationScore,
+          bearishConfirmationScore
+        );
+
+
+// ---------- Reasons ----------
+
+if (bullishConfirmationScore >= 70) {
 
   reasons.push(
-    "High-confidence confluence detected."
+    "Strong bullish confluence detected."
   );
 
 }
-else if (confirmationScore >= 50) {
+
+if (bearishConfirmationScore >= 70) {
 
   reasons.push(
-    "Good confluence detected."
+    "Strong bearish confluence detected."
   );
 
 }
+
+console.log("🧩 V1 DIRECTIONAL CONFIRMATION:", {
+  bullishConfirmationScore,
+  bearishConfirmationScore,
+  confirmationScore,
+  trend: data.trend,
+  breakout: data.breakout,
+  volumeStrength: data.volumeStrength,
+  rsi: data.rsi,
+  ema20: data.ema20,
+  ema50: data.ema50,
+  pattern: data.pattern,
+});
+
+console.log("🎯 V1 DIRECTIONAL GATE:", {
+  trend: data.trend,
+  confirmationScore,
+  bearishConfirmationScore,
+  bullishConfirmationScore,
+  breakout: data.breakout,
+  rsi: data.rsi,
+  ema20: data.ema20,
+  ema50: data.ema50,
+});
 
 // ===============================
 // Strong Trend Bonus
@@ -309,21 +404,15 @@ if (
 // ===============================
 
 if (
-
   distanceToSupport !== null &&
-
   distanceToSupport < 20 &&
-
   data.trend === "Bearish"
-
 ) {
-
-  riskScore -= 8;
+  riskScore -= 5;
 
   reasons.push(
-    "Support is too close for a SELL."
+    "Support is close, reducing SELL entry quality."
   );
-
 }
 
 // ===============================
@@ -431,7 +520,7 @@ else if (movement < 0) {
 // Momentum Exhaustion Engine
 // ===============================
 
-const previousMovement = data.previousPrice - data.price;
+const previousMovement = data.price - data.previousPrice;
 
 if (
   data.trend === "Bullish" &&
@@ -527,18 +616,17 @@ if (
 
 if (
   nearestResistance !== null &&
-  Math.abs(data.price - nearestResistance) <= 15
+  Math.abs(data.price - nearestResistance) <= 15 &&
+  data.trend === "Bullish"
 ) {
 
-  riskScore -= 8;
+  riskScore -= 5;
 
   reasons.push(
-    "Price is trading near a resistance zone."
+    "Price is approaching resistance, reducing BUY entry quality."
   );
 
 }
-
-// Breakout / Breakdown
 
 // Breakout / Breakdown
 
@@ -747,6 +835,17 @@ if (
 
 let entryScore = 0;
 
+console.log("🎯 ENTRY SCORE START:", {
+  trend: data.trend,
+  ema20: data.ema20,
+  ema50: data.ema50,
+  strength,
+  breakout: data.breakout,
+  volumeStrength: data.volumeStrength,
+  pattern: data.pattern,
+  movement,
+});
+
 // ===============================
 // Trend Alignment
 // ===============================
@@ -785,12 +884,29 @@ if (
   data.ema50 !== null
 ) {
 
+  console.log("🎯 ENTRY EMA CHECK:", {
+    trend: data.trend,
+    ema20: data.ema20,
+    ema50: data.ema50,
+    bullishAlignment:
+      data.trend === "Bullish" &&
+      data.ema20 > data.ema50,
+    bearishAlignment:
+      data.trend === "Bearish" &&
+      data.ema20 < data.ema50,
+    entryScoreBeforeEMA: entryScore,
+  });
+
   if (
     data.trend === "Bullish" &&
     data.ema20 > data.ema50
   ) {
 
     entryScore += 2;
+
+    console.log("✅ ENTRY SCORE +2: BULLISH EMA ALIGNMENT", {
+      entryScore,
+    });
 
   }
 
@@ -800,6 +916,10 @@ if (
   ) {
 
     entryScore += 2;
+
+    console.log("✅ ENTRY SCORE +2: BEARISH EMA ALIGNMENT", {
+      entryScore,
+    });
 
   }
 
@@ -820,6 +940,90 @@ else if (strength > 10) {
   entryScore += 1;
 
 }
+
+// ===============================
+// RSI Entry Quality
+// ===============================
+
+// Bullish entries become less attractive
+// when RSI is already extremely overbought.
+
+if (
+  data.rsi !== null &&
+  data.trend === "Bullish"
+) {
+
+  if (data.rsi >= 90) {
+
+    entryScore -= 4;
+
+    reasons.push(
+      "RSI is extremely overbought. Fresh BUY entry is strongly discouraged."
+    );
+
+  }
+
+  else if (data.rsi >= 80) {
+
+    entryScore -= 3;
+
+    reasons.push(
+      "RSI is overbought. Fresh BUY entry is less favorable."
+    );
+
+  }
+
+  else if (data.rsi >= 70) {
+
+    entryScore -= 1;
+
+    reasons.push(
+      "RSI is elevated. BUY entry has reduced room for immediate upside."
+    );
+
+  }
+}
+
+
+// Bearish entries become less attractive
+// when RSI is already extremely oversold.
+
+if (
+  data.rsi !== null &&
+  data.trend === "Bearish"
+) {
+
+  if (data.rsi <= 10) {
+
+    entryScore -= 4;
+
+    reasons.push(
+      "RSI is extremely oversold. Fresh SELL entry is strongly discouraged."
+    );
+
+  }
+
+  else if (data.rsi <= 20) {
+
+    entryScore -= 3;
+
+    reasons.push(
+      "RSI is oversold. Fresh SELL entry is less favorable."
+    );
+
+  }
+
+  else if (data.rsi <= 30) {
+
+    entryScore -= 1;
+
+    reasons.push(
+      "RSI is depressed. SELL entry has reduced room for immediate downside."
+    );
+
+  }
+}
+
 
 // ===============================
 // Breakout Confirmation
@@ -901,6 +1105,18 @@ if (strength > 20) {
 
 }
 
+console.log("🎯 V1 ENTRY SCORE BEFORE CLAMP:", {
+  entryScore,
+  trend: data.trend,
+  ema20: data.ema20,
+  ema50: data.ema50,
+  strength,
+  movement,
+  breakout: data.breakout,
+  volumeStrength: data.volumeStrength,
+  pattern: data.pattern,
+});
+
 // Keep entry score within range
 
 entryScore = Math.max(
@@ -970,6 +1186,7 @@ const confluenceBonus =
       ? 15
       : 0;
 
+
 score =
   50 +
   trendScore +
@@ -979,11 +1196,53 @@ score =
   structureScore +
   breakoutScore +
   volumeScore +
-  riskScore +
   entryScore +
   confluenceBonus;
 
-  // ===============================
+
+// ===============================
+// Ranging Market Score Penalty
+// ===============================
+
+if (marketRegime === "RANGING") {
+
+  if (confirmationScore < 70) {
+
+    score -= 20;
+
+    reasons.push(
+      "Ranging market reduces score because confirmation is insufficient."
+    );
+
+  }
+
+}
+
+// Limit the risk penalty so it cannot completely destroy
+// an otherwise valid directional setup.
+const riskPenalty = Math.max(-15, riskScore);
+
+score += riskPenalty;
+
+console.log("📊 V1 SCORE CALCULATION:", {
+  startingScore: 50,
+  trendScore,
+  momentumScore,
+  patternScore,
+  movingAverageScore,
+  structureScore,
+  breakoutScore,
+  volumeScore,
+  entryScore,
+  confirmationScore,
+  confluenceBonus,
+  riskScore,
+  riskPenalty,
+  rsi: data.rsi,
+  scoreBeforeClamp: score,
+});
+
+// ===============================
 // High Confidence Bonus
 // ===============================
 
@@ -1001,6 +1260,12 @@ if (
   );
 
 }
+
+console.log("⚠️ RISK SCORE DEBUG:", {
+  riskScore,
+  riskPenalty,
+  rsi: data.rsi,
+});
 
 // Keep score within limits
 score = Math.max(0, Math.min(100, score));
@@ -1022,8 +1287,7 @@ let advice = "Wait for confirmation";
 
 if (
   data.marketStructure === "SIDEWAYS" &&
-  data.volumeStrength !== "HIGH" &&
-  confirmationScore < 60
+  confirmationScore < 40
 ) {
 
   marketTradable = false;
@@ -1042,9 +1306,7 @@ let regimeEntryAllowed = true;
 
 if (marketRegime === "RANGING") {
 
-  regimeEntryAllowed =
-  confirmationScore >= 60 &&
-  entryScore >= 5;
+  regimeEntryAllowed = false;
 
 }
 
@@ -1056,21 +1318,70 @@ if (marketRegime === "VOLATILE") {
 
 }
 
-console.log("🔎 BUY GATE:", {
+
+// ===============================
+// Final Entry Blockers
+// ===============================
+
+// These are hard blockers for a fresh BUY.
+// A high score must NOT override them.
+
+const buyEntryBlocked =
+  data.trend === "Bullish" &&
+  (
+    (data.rsi !== null && data.rsi >= 90) ||
+    entryScore < 4 ||
+    confirmationScore < 50 ||
+    !marketTradable ||
+    !regimeEntryAllowed
+  );
+
+
+// These are hard blockers for a fresh SELL.
+
+const sellEntryBlocked =
+  data.trend === "Bearish" &&
+  (
+    (data.rsi !== null && data.rsi <= 10) ||
+    entryScore < 5 ||
+    !marketTradable ||
+    !regimeEntryAllowed
+  );
+
+
+console.log("🔎 FINAL ENTRY GATE:", {
+
   score,
-  marketTradable,
+
+  trendInput: data.trend,
+
   confirmationScore,
+
   entryScore,
-  regimeEntryAllowed,
+
+  marketTradable,
+
   marketRegime,
+
+  regimeEntryAllowed,
+
+  rsi: data.rsi,
+
+  buyEntryBlocked,
+
+  sellEntryBlocked,
+
 });
+
+
+// ===============================
+// FINAL ACTION DECISION
+// ===============================
 
 if (
   score >= 75 &&
-  marketTradable &&
-  confirmationScore >= 60 &&
-  entryScore >= 5 &&
-  regimeEntryAllowed
+  data.trend === "Bullish" &&
+  !buyEntryBlocked
 ) {
 
   trend = "Bullish";
@@ -1079,13 +1390,11 @@ if (
 
 }
 
-
 else if (
   score <= 25 &&
-  marketTradable &&
-  bearishConfirmations >= 4 &&
-  entryScore >= 5 &&
-  regimeEntryAllowed
+  data.trend === "Bearish" &&
+  !sellEntryBlocked &&
+  bearishConfirmations >= 4
 ) {
 
   trend = "Bearish";
@@ -1094,9 +1403,17 @@ else if (
 
 }
 
-else if (score >= 60 && score < 75) {
+else if (
+  score >= 60 &&
+  score < 75 &&
+  marketTradable &&
+  regimeEntryAllowed
+) {
 
-  trend = trendScore >= 0 ? "Bullish" : "Bearish";
+  trend =
+    trendScore >= 0
+      ? "Bullish"
+      : "Bearish";
 
   action = "WATCH";
 
@@ -1109,6 +1426,35 @@ else {
   action = "WAIT";
 
 }
+
+
+console.log("🚦 FINAL ACTION DECISION:", {
+
+  action,
+
+  trend,
+
+  score,
+
+  trendInput: data.trend,
+
+  marketTradable,
+
+  confirmationScore,
+
+  entryScore,
+
+  regimeEntryAllowed,
+
+  marketRegime,
+
+  rsi: data.rsi,
+
+  buyEntryBlocked,
+
+  sellEntryBlocked,
+
+});
 
 if (
   action === "BUY" &&
@@ -1267,7 +1613,7 @@ probability += riskScore * 0.3;
 
 if (marketRegime === "RANGING") {
 
-  probability -= 10;
+  probability -= 20;
 
 }
 
@@ -1295,6 +1641,54 @@ if (
 
 }
 
+// ===============================
+// Extreme RSI Probability Adjustment
+// ===============================
+
+// Extremely overbought conditions reduce
+// the reliability of a fresh BUY.
+if (data.rsi !== null && data.rsi >= 85) {
+
+  if (data.trend === "Bullish") {
+
+    probability -= 15;
+
+  }
+
+}
+
+// Extremely oversold conditions reduce
+// the reliability of a fresh SELL.
+if (data.rsi !== null && data.rsi <= 15) {
+
+  if (data.trend === "Bearish") {
+
+    probability -= 15;
+
+  }
+
+}
+
+console.log("🧮 V1 PROBABILITY BREAKDOWN:", {
+  trendScore,
+  momentumScore,
+  movingAverageScore,
+  breakoutScore,
+  volumeScore,
+  patternScore,
+  structureScore,
+  riskScore,
+
+  marketRegime,
+  marketTradable,
+
+  probabilityBeforeClamp: probability,
+});
+
+// ===============================
+// Clamp Probability
+// ===============================
+
 probability = Math.max(
   0,
   Math.min(100, Math.round(probability))
@@ -1306,91 +1700,316 @@ probability = Math.max(
 
 let confidence = probability;
 
+
 // ===============================
 // Confidence Conflict Penalty
 // ===============================
 
 let conflicts = 0;
 
+console.log("🔎 CONFLICT ENGINE START:", {
+  trend: data.trend,
+  macd: data.macd,
+  ema20: data.ema20,
+  ema50: data.ema50,
+  rsi: data.rsi,
+});
+
+// ---------------------------------
+// MACD Conflict
+// ---------------------------------
+
 if (
   data.trend === "Bullish" &&
   data.macd !== null &&
   data.macd < 0
-)
+) {
   conflicts++;
 
-if (
-  data.trend === "Bearish" &&
-  data.macd !== null &&
-  data.macd > 0
-)
-  conflicts++;
+  console.log("⚠️ CONFLICT ADDED: MACD", {
+    conflicts,
+    trend: data.trend,
+    macd: data.macd,
+  });
+}
+
+
+// ---------------------------------
+// Moving Average Conflict
+// ---------------------------------
 
 if (
   data.trend === "Bullish" &&
   data.ema20 !== null &&
   data.ema50 !== null &&
   data.ema20 < data.ema50
-)
+) {
   conflicts++;
+
+  console.log("⚠️ CONFLICT ADDED: EMA", {
+    conflicts,
+    trend: data.trend,
+    ema20: data.ema20,
+    ema50: data.ema50,
+  });
+}
 
 if (
   data.trend === "Bearish" &&
   data.ema20 !== null &&
   data.ema50 !== null &&
   data.ema20 > data.ema50
-)
+) {
   conflicts++;
+
+  console.log("⚠️ CONFLICT ADDED: EMA", {
+    conflicts,
+    trend: data.trend,
+    ema20: data.ema20,
+    ema50: data.ema50,
+  });
+}
+
+
+// ---------------------------------
+// RSI Extreme Entry Conflict
+// ---------------------------------
+
+if (
+  data.rsi !== null &&
+  data.trend === "Bullish" &&
+  data.rsi >= 80
+) {
+  conflicts++;
+
+  console.log("⚠️ CONFLICT ADDED: EXTREME RSI BUY", {
+    conflicts,
+    trend: data.trend,
+    rsi: data.rsi,
+  });
+
+  reasons.push(
+    "RSI is extremely overbought, reducing entry confidence."
+  );
+}
+
+
+// ---------------------------------
+// Momentum Conflict
+// ---------------------------------
+
+if (
+  data.trend === "Bullish" &&
+  momentumScore <= 0
+) {
+  conflicts++;
+
+  reasons.push(
+    "Bullish trend is not supported by sufficient momentum."
+  );
+}
+
+if (
+  data.trend === "Bearish" &&
+  momentumScore >= 0
+) {
+  conflicts++;
+
+  reasons.push(
+    "Bearish trend is not supported by sufficient momentum."
+  );
+}
+
+
+// ---------------------------------
+// Resistance / Support Entry Conflict
+// ---------------------------------
+
+if (
+  data.trend === "Bullish" &&
+  riskScore <= -8
+) {
+  conflicts++;
+
+  reasons.push(
+    "Risk conditions are unfavorable for a bullish entry."
+  );
+}
+
+if (
+  data.trend === "Bearish" &&
+  riskScore <= -8
+) {
+  conflicts++;
+
+  reasons.push(
+    "Risk conditions are unfavorable for a bearish entry."
+  );
+}
+
+
+// Conflicting indicators reduce confidence
+
+console.log("🧮 CONFLICT PENALTY:", {
+  conflicts,
+  penalty: conflicts * 8,
+  confidenceBeforePenalty: confidence,
+});
 
 confidence -= conflicts * 8;
 
-confidence += Math.floor(confirmationScore / 5);
+// ===============================
+// Confirmation Contribution
+// ===============================
 
-if (!marketTradable)
-  confidence -= 15;
-
-if (trend === "Bullish" && trendScore > 0)
-  confidence += 5;
-
-if (trend === "Bearish" && trendScore < 0)
-  confidence += 5;
-
-confidence = Math.max(
-  0,
-  Math.min(100, Math.round(confidence))
+confidence += Math.floor(
+  confirmationScore / 5
 );
+
+
+// ===============================
+// Market Tradability Penalty
+// ===============================
+
+if (!marketTradable) {
+  confidence -= 10;
+}
+
+
+// ===============================
+// Ranging Market Penalty
+// ===============================
+
+if (marketRegime === "RANGING") {
+  confidence -= 10;
+}
+
+
+// ===============================
+// Trend Agreement
+// ===============================
+
+if (
+  trend === "Bullish" &&
+  trendScore > 0 &&
+  conflicts === 0
+) {
+  confidence += 5;
+}
+
+if (
+  trend === "Bearish" &&
+  trendScore < 0 &&
+  conflicts === 0
+) {
+  confidence += 5;
+}
 
 // ===============================
 // Probability / Confidence Consistency
 // ===============================
 
-if (probability >= 85 && conflicts === 0) {
-
+if (
+  probability >= 85 &&
+  conflicts === 0
+) {
   confidence += 5;
-
 }
 
 if (probability < 60) {
-
   confidence -= 10;
-
 }
+
+
+// ===============================
+// Keep Confidence Within Limits
+// ===============================
+
+confidence = Math.max(
+  0,
+  Math.min(
+    100,
+    Math.round(confidence)
+  )
+);
+
+console.log("🔬 ===== CONFIDENCE ENGINE DEBUG =====");
+
+console.log({
+  probability,
+  confirmationScore,
+  conflicts,
+
+  trendScore,
+  momentumScore,
+  movingAverageScore,
+  breakoutScore,
+  volumeScore,
+  patternScore,
+  structureScore,
+  riskScore,
+
+  marketTradable,
+  marketRegime,
+
+  action,
+  trend,
+
+  rsi: data.rsi,
+  trendInput: data.trend,
+  breakoutInput: data.breakout,
+  volumeInput: data.volumeStrength,
+  marketStructureInput: data.marketStructure,
+
+  reasons,
+});
+
+console.log(
+  "📊 V1 CONFIDENCE CALCULATION:",
+  {
+    probability,
+    conflicts,
+    confirmationScore,
+    marketTradable,
+    marketRegime,
+    trend,
+    trendScore,
+    confidence,
+  }
+);
 
 // ===============================
 // Trade Quality Engine
 // ===============================
 
-if (score >= 90) {
+// Trade quality must reflect the FINAL ACTION.
+// A WAIT decision must never be presented as an A/A+ trade.
 
-  tradeQuality = "A+";
+if (action === "BUY" || action === "SELL") {
+
+  if (score >= 90 && confidence >= 85) {
+
+    tradeQuality = "A+";
+
+  }
+  else if (score >= 75 && confidence >= 80) {
+
+    tradeQuality = "A";
+
+  }
+  else if (confidence >= 65) {
+
+    tradeQuality = "B";
+
+  }
+  else {
+
+    tradeQuality = "C";
+
+  }
 
 }
-else if (confidence >= 80) {
-
-  tradeQuality = "A";
-
-}
-else if (confidence >= 65) {
+else if (action === "WATCH") {
 
   tradeQuality = "B";
 
@@ -1398,6 +2017,25 @@ else if (confidence >= 65) {
 else {
 
   tradeQuality = "C";
+
+}
+
+// ===============================
+// Final Action / Quality Consistency
+// ===============================
+
+// WATCH and WAIT are not executable trade signals.
+// They must never be classified as A or A+ opportunities.
+
+if (action === "WAIT") {
+
+  tradeQuality = "C";
+
+}
+
+if (action === "WATCH") {
+
+  tradeQuality = "B";
 
 }
 
@@ -1467,29 +2105,18 @@ else if (tradeQuality === "B") {
 }
 
 return {
-
   trend,
-
   confidence,
-
   probability,
-
   tradeQuality,
-
   opportunityRating,
 
   marketRegime,
-
   action,
-
   reasons,
-
   marketCondition,
-
   riskLevel,
-
   advice,
-
   summary,
 
   breakdown: {
@@ -1502,7 +2129,6 @@ return {
     volume: volumeScore,
     risk: riskScore,
   },
-
 };
 
 }
