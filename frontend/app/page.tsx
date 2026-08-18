@@ -92,6 +92,100 @@ const [realNiftyCandles, setRealNiftyCandles] =
   })
 );
 
+const realClosePrices =
+  realNiftyCandles.map(
+    (candle) => candle.close
+  );
+
+  useEffect(() => {
+  if (realClosePrices.length > 14) {
+    const rsi =
+      calculateRSI(realClosePrices);
+
+    setRealRSI(rsi);
+  }
+}, [realNiftyCandles]);
+
+useEffect(() => {
+  if (realClosePrices.length >= 20) {
+    const ema =
+      calculateEMA(
+        realClosePrices,
+        20
+      );
+
+    setRealEMA20(ema);
+  }
+}, [realNiftyCandles]);
+
+useEffect(() => {
+  if (realClosePrices.length >= 50) {
+    const ema =
+      calculateEMA(
+        realClosePrices,
+        50
+      );
+
+    setRealEMA50(ema);
+  }
+}, [realNiftyCandles]);
+
+useEffect(() => {
+  if (realClosePrices.length >= 26) {
+    const macd =
+      calculateMACD(realClosePrices);
+
+    setRealMACD(macd);
+  }
+}, [realNiftyCandles]);
+
+useEffect(() => {
+  if (realNiftyCandles.length >= 7) {
+    const levels =
+      calculateSupportResistance(
+        realNiftyCandles
+      );
+
+    setRealLevels(levels);
+  }
+}, [realNiftyCandles]);
+
+useEffect(() => {
+  if (realNiftyCandles.length >= 2) {
+    const previousCandle =
+      realNiftyCandles[
+        realNiftyCandles.length - 2
+      ];
+
+    const currentCandle =
+      realNiftyCandles[
+        realNiftyCandles.length - 1
+      ];
+
+    const detected =
+      analyzePattern(
+        previousCandle,
+        currentCandle
+      );
+
+    setRealPattern(detected);
+  }
+}, [realNiftyCandles]);
+
+useEffect(() => {
+  if (realClosePrices.length >= 20) {
+    const structure =
+      detectMarketStructure(
+        realClosePrices
+      );
+
+    setRealMarketStructure(
+      structure
+    );
+  }
+}, [realNiftyCandles]);
+
+
   const [priceHistory, setPriceHistory] = useState([
     24600,
     24620,
@@ -198,9 +292,81 @@ const [patternHistory, setPatternHistory] =
   >([]);
 
 
-  const [currentRSI, setCurrentRSI] = useState<number | null>(null);
-  const [ema20, setEma20] = useState<number | null>(null);
-  const [ema50, setEma50] = useState<number | null>(null);
+  const [currentRSI, setCurrentRSI] = 
+  useState<number | null>(null);
+const [realRSI, setRealRSI] =
+  useState<number | null>(null);
+
+  const [ema20, setEma20] 
+  = useState<number | null>(null);
+
+  const [ema50, setEma50] = 
+  useState<number | null>(null);
+
+  const [realEMA20, setRealEMA20] =
+  useState<number | null>(null);
+
+  const [realEMA50, setRealEMA50] =
+  useState<number | null>(null);
+
+  const [realMACD, setRealMACD] =
+  useState<number | null>(null);
+
+  const [realLevels, setRealLevels] =
+  useState({
+    support: [] as number[],
+    resistance: [] as number[],
+  });
+
+  const [realPattern, setRealPattern] =
+  useState("No Pattern");
+
+  const [realMarketStructure, setRealMarketStructure] =
+  useState<"UPTREND" | "DOWNTREND" | "SIDEWAYS">(
+    "SIDEWAYS"
+  );
+
+  const [realBreakout, setRealBreakout] =
+  useState("NONE");
+
+  const [realTrend, setRealTrend] =
+  useState("Neutral");
+
+  useEffect(() => {
+  if (
+    realMarketData?.nifty?.price != null
+  ) {
+    const breakout =
+      detectBreakout(
+        realMarketData.nifty.price,
+        realLevels.resistance,
+        realLevels.support
+      );
+
+    setRealBreakout(breakout);
+  }
+}, [
+  realMarketData,
+  realLevels,
+]);
+
+useEffect(() => {
+  if (
+    realMarketData?.nifty?.price != null
+  ) {
+    const trend =
+      getTrend(
+        realMarketData.nifty.price,
+        realEMA20
+      );
+
+    setRealTrend(trend);
+  }
+}, [
+  realMarketData,
+  realEMA20,
+]);
+
   const [ema20History, setEma20History] =
   useState<number[]>([]);
 
@@ -1382,6 +1548,75 @@ if (detectedPattern !== "No Pattern") {
     <div>
   Real NIFTY candles:{" "}
   <strong>{realNiftyCandles.length}</strong>
+</div>
+<div>
+  Real RSI:{" "}
+  <strong>
+    {realRSI !== null
+      ? realRSI.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real EMA20:{" "}
+  <strong>
+    {realEMA20 !== null
+      ? realEMA20.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real EMA50:{" "}
+  <strong>
+    {realEMA50 !== null
+      ? realEMA50.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real MACD:{" "}
+  <strong>
+    {realMACD !== null
+      ? realMACD.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real Support:{" "}
+  <strong>
+    {realLevels.support.length > 0
+      ? realLevels.support
+          .map((level) => level.toFixed(2))
+          .join(", ")
+      : "None"}
+  </strong>
+</div>
+
+<div>
+  Real Resistance:{" "}
+  <strong>
+    {realLevels.resistance.length > 0
+      ? realLevels.resistance
+          .map((level) => level.toFixed(2))
+          .join(", ")
+      : "None"}
+  </strong>
+</div>
+<div>
+  Real Pattern:{" "}
+  <strong>{realPattern}</strong>
+</div>
+<div>
+  Real Market Structure:{" "}
+  <strong>{realMarketStructure}</strong>
+</div>
+<div>
+  Real Breakout:{" "}
+  <strong>{realBreakout}</strong>
+</div>
+<div>
+  Real Trend:{" "}
+  <strong>{realTrend}</strong>
 </div>
 {realNiftyCandles.length > 0 && (
   <div>

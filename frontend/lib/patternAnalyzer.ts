@@ -29,26 +29,32 @@ export function analyzePattern(
       currentCandle
     )
   ) {
-    console.log("🔥 Bearish Engulfing detected");
+    console.log(
+      "🔥 Bearish Engulfing detected"
+    );
+
     return "Bearish Engulfing";
   }
 
   if (
-  detectHammer(currentCandle)
-) {
-  console.log("🔨 Hammer detected");
-  return "Hammer";
+    detectHammer(currentCandle)
+  ) {
+    console.log(
+      "🔨 Hammer detected"
+    );
+
+    return "Hammer";
+  }
 
   if (
-  detectDoji(currentCandle)
-) {
-  console.log("⚖️ Doji detected");
-  return "Doji";
-}
+    detectDoji(currentCandle)
+  ) {
+    console.log(
+      "⚖️ Doji detected"
+    );
 
-}
+    return "Doji";
+  }
 
   return "No Pattern";
-
-
 }
