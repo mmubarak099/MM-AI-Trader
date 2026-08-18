@@ -7,18 +7,29 @@ const yahooFinance = new YahooFinance({
 
 export async function GET() {
   try {
-const [nifty, bankNifty, niftyChart] =
-  await Promise.all([
-    yahooFinance.quote("^NSEI"),
-    yahooFinance.quote("^NSEBANK"),
+const [
+  nifty,
+  bankNifty,
+  niftyChart,
+  niftyChart1m,
+] = await Promise.all([
+  yahooFinance.quote("^NSEI"),
+  yahooFinance.quote("^NSEBANK"),
 
-    yahooFinance.chart("^NSEI", {
-      period1: new Date(
-        Date.now() - 24 * 60 * 60 * 1000
-      ),
-      interval: "5m",
-    }),
-  ]);
+  yahooFinance.chart("^NSEI", {
+    period1: new Date(
+      Date.now() - 24 * 60 * 60 * 1000
+    ),
+    interval: "5m",
+  }),
+
+  yahooFinance.chart("^NSEI", {
+    period1: new Date(
+      Date.now() - 24 * 60 * 60 * 1000
+    ),
+    interval: "1m",
+  }),
+]);
 
     return NextResponse.json({
       success: true,
@@ -59,6 +70,24 @@ niftyCandles: niftyChart.quotes
     close: candle.close,
   })),
 
+  niftyCandles1m: niftyChart1m.quotes
+  .filter(
+    (candle) =>
+      candle.open != null &&
+      candle.high != null &&
+      candle.low != null &&
+      candle.close != null &&
+      candle.date.getTime() <=
+        Date.now() - 1 * 60 * 1000
+  )
+  .map((candle) => ({
+    time: candle.date,
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+  })),
+  
     });
   } catch (error) {
     console.error("MARKET DATA ERROR:", error);

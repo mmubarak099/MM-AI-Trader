@@ -34,6 +34,7 @@ import { detectBreakout } from "../lib/breakoutDetector";
 import { analyzeVolume } from "../lib/volumeAnalyzer";
 import { validateSignal } from "../lib/signalValidator";
 import { manageTrade } from "../lib/tradeManagerAI";
+import { analyzeRealTimeframe } from "../lib/realMarketAnalyzer";
 import {
   activateTrade,
   updateTrade,
@@ -80,6 +81,9 @@ const [realMarketData, setRealMarketData] =
   useState<any>(null);
 
 const [realNiftyCandles, setRealNiftyCandles] =
+  useState<any[]>([]);
+
+  const [realNiftyCandles1m, setRealNiftyCandles1m] =
   useState<any[]>([]);
 
   const realChartCandles = realNiftyCandles.map(
@@ -332,6 +336,57 @@ const [realRSI, setRealRSI] =
   const [realTrend, setRealTrend] =
   useState("Neutral");
 
+  const [realAIAnalysis, setRealAIAnalysis] =
+  useState<any>(null);
+
+  const [analysis5m, setAnalysis5m] =
+  useState<any>(null);
+
+const [analysis1m, setAnalysis1m] =
+  useState<any>(null);
+
+  const realConfirmationChecks = [
+  // 1. Trend
+  realAIAnalysis?.action === "BUY"
+    ? realTrend === "Bullish"
+    : realAIAnalysis?.action === "SELL"
+    ? realTrend === "Bearish"
+    : false,
+
+  // 2. Pattern
+  realAIAnalysis?.action === "BUY"
+    ? (
+        realPattern === "Bullish Engulfing" ||
+        realPattern === "Hammer"
+      )
+    : realAIAnalysis?.action === "SELL"
+    ? realPattern === "Bearish Engulfing"
+    : false,
+
+  // 3. Structure
+  realAIAnalysis?.action === "BUY"
+    ? realMarketStructure === "UPTREND"
+    : realAIAnalysis?.action === "SELL"
+    ? realMarketStructure === "DOWNTREND"
+    : false,
+
+  // 4. Breakout
+  realAIAnalysis?.action === "BUY"
+    ? realBreakout === "BREAKOUT"
+    : realAIAnalysis?.action === "SELL"
+    ? realBreakout === "BREAKDOWN"
+    : false,
+
+  // 5. Volume
+  false,
+
+  // 6. Confidence
+  (realAIAnalysis?.confidence ?? 0) >= 90,
+];
+
+const realPassedConfirmations =
+  realConfirmationChecks.filter(Boolean).length;
+
   useEffect(() => {
   if (
     realMarketData?.nifty?.price != null
@@ -367,6 +422,94 @@ useEffect(() => {
   realEMA20,
 ]);
 
+useEffect(() => {
+  if (
+    realMarketData?.nifty?.price == null ||
+    realNiftyCandles.length < 2
+  ) {
+    return;
+  }
+
+  const previousCandle =
+    realNiftyCandles[
+      realNiftyCandles.length - 2
+    ];
+
+  const analysis = analyzeMarketV1({
+    price: realMarketData.nifty.price,
+    previousPrice: previousCandle.close,
+    trend: realTrend,
+    rsi: realRSI,
+    ema20: realEMA20,
+    ema50: realEMA50,
+    macd: realMACD,
+
+    pattern: realPattern,
+    support: realLevels.support,
+    resistance: realLevels.resistance,
+    marketStructure: realMarketStructure,
+    breakout: realBreakout,
+
+    // Yahoo NIFTY index volume is not usable,
+    // so keep volume neutral for observation mode.
+    volumeStrength: "NORMAL",
+  });
+
+  setRealAIAnalysis(analysis);
+
+}, [
+  realMarketData,
+  realNiftyCandles,
+  realTrend,
+  realRSI,
+  realEMA20,
+  realEMA50,
+  realMACD,
+  realPattern,
+  realLevels,
+  realMarketStructure,
+  realBreakout,
+]);
+
+useEffect(() => {
+  if (
+    realMarketData?.nifty?.price == null
+  ) {
+    return;
+  }
+
+  const result =
+    analyzeRealTimeframe(
+      realNiftyCandles,
+      realMarketData.nifty.price
+    );
+
+  setAnalysis5m(result);
+
+}, [
+  realMarketData,
+  realNiftyCandles,
+]);
+
+useEffect(() => {
+  if (
+    realMarketData?.nifty?.price == null
+  ) {
+    return;
+  }
+
+  const result =
+    analyzeRealTimeframe(
+      realNiftyCandles1m,
+      realMarketData.nifty.price
+    );
+
+  setAnalysis1m(result);
+
+}, [
+  realMarketData,
+  realNiftyCandles1m,
+]);
   const [ema20History, setEma20History] =
   useState<number[]>([]);
 
@@ -408,7 +551,7 @@ useEffect(() => {
 if (data.success) {
   setRealMarketData(data);
 
-    console.log(
+  console.log(
     "REAL CANDLE CHECK:",
     Array.isArray(data.niftyCandles),
     data.niftyCandles?.length
@@ -417,8 +560,13 @@ if (data.success) {
   if (Array.isArray(data.niftyCandles)) {
     setRealNiftyCandles(data.niftyCandles);
   }
-}
 
+  if (Array.isArray(data.niftyCandles1m)) {
+    setRealNiftyCandles1m(
+      data.niftyCandles1m
+    );
+  }
+}
     } catch (error) {
       console.error(
         "REAL MARKET DATA FETCH ERROR:",
@@ -1550,6 +1698,12 @@ if (detectedPattern !== "No Pattern") {
   <strong>{realNiftyCandles.length}</strong>
 </div>
 <div>
+  Real 1m candles:{" "}
+  <strong>
+    {realNiftyCandles1m.length}
+  </strong>
+</div>
+<div>
   Real RSI:{" "}
   <strong>
     {realRSI !== null
@@ -1617,6 +1771,125 @@ if (detectedPattern !== "No Pattern") {
 <div>
   Real Trend:{" "}
   <strong>{realTrend}</strong>
+</div>
+<div>
+  Analyzer 5m Trend:{" "}
+  <strong>
+    {analysis5m?.trend ?? "--"}
+  </strong>
+</div>
+<div>
+  Analyzer 1m Trend:{" "}
+  <strong>
+    {analysis1m?.trend ?? "--"}
+  </strong>
+</div>
+<div>
+  Analyzer 5m RSI:{" "}
+  <strong>
+    {analysis5m?.rsi ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m RSI:{" "}
+  <strong>
+    {analysis1m?.rsi ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 5m Pattern:{" "}
+  <strong>
+    {analysis5m?.pattern ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m Pattern:{" "}
+  <strong>
+    {analysis1m?.pattern ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 5m Structure:{" "}
+  <strong>
+    {analysis5m?.marketStructure ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m Structure:{" "}
+  <strong>
+    {analysis1m?.marketStructure ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 5m Breakout:{" "}
+  <strong>
+    {analysis5m?.breakout ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m Breakout:{" "}
+  <strong>
+    {analysis1m?.breakout ?? "--"}
+  </strong>
+</div>
+<div className="mt-2">
+  Real V1 Action:{" "}
+  <strong>
+    {realAIAnalysis?.action ?? "Waiting..."}
+  </strong>
+</div>
+
+<div>
+  Real V1 Confidence:{" "}
+  <strong>
+    {realAIAnalysis?.confidence ?? "--"}%
+  </strong>
+</div>
+<div>
+  Real Confirmations:{" "}
+  <strong>
+    {realPassedConfirmations} / 6
+  </strong>
+</div>
+<div>
+  Real V1 Market:{" "}
+  <strong>
+    {realAIAnalysis?.marketCondition ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Risk:{" "}
+  <strong>
+    {realAIAnalysis?.riskLevel ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Advice:{" "}
+  <strong>
+    {realAIAnalysis?.advice ?? "--"}
+  </strong>
+</div>
+<div>
+  Real Market Regime:{" "}
+  <strong>
+    {realAIAnalysis?.marketRegime ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real Trade Quality:{" "}
+  <strong>
+    {realAIAnalysis?.tradeQuality ?? "--"}
+  </strong>
 </div>
 {realNiftyCandles.length > 0 && (
   <div>
