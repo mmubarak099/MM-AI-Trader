@@ -8,6 +8,7 @@ export type TradeStatus =
   | "PENDING"
   | "ACTIVE"
   | "TARGET 1 HIT"
+  | "TARGET 2 HIT"
   | "CLOSED";
 
 export type TradeResult =

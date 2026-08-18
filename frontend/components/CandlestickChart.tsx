@@ -102,12 +102,11 @@ return (
       Candlestick Chart
     </h2>
 
-    <svg
-      width="100%"
-      height="450"
-      viewBox="0 0 1000 450"
-      className="bg-gray-950 rounded-lg"
-    >
+<svg
+  viewBox="0 0 1000 450"
+  preserveAspectRatio="xMidYMid meet"
+  className="w-full h-auto bg-gray-950 rounded-lg"
+>
     {Array.from({ length: priceLevels }).map((_, i) => {
 
   const price =

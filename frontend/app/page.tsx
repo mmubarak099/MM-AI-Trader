@@ -76,7 +76,21 @@ export default function Home() {
     change: 0.38
   });
 
+const [realMarketData, setRealMarketData] =
+  useState<any>(null);
 
+const [realNiftyCandles, setRealNiftyCandles] =
+  useState<any[]>([]);
+
+  const realChartCandles = realNiftyCandles.map(
+  (candle) => ({
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+    volume: 0,
+  })
+);
 
   const [priceHistory, setPriceHistory] = useState([
     24600,
@@ -213,6 +227,51 @@ const [vwap, setVwap] = useState<number | null>(null);
 const [marketStructure, setMarketStructure] =
   useState("SIDEWAYS");
 
+useEffect(() => {
+  async function fetchRealMarketData() {
+    try {
+      const response = await fetch(
+        "/api/market-data",
+        {
+          cache: "no-store",
+        }
+      );
+
+      const data = await response.json();
+
+if (data.success) {
+  setRealMarketData(data);
+
+    console.log(
+    "REAL CANDLE CHECK:",
+    Array.isArray(data.niftyCandles),
+    data.niftyCandles?.length
+  );
+
+  if (Array.isArray(data.niftyCandles)) {
+    setRealNiftyCandles(data.niftyCandles);
+  }
+}
+
+    } catch (error) {
+      console.error(
+        "REAL MARKET DATA FETCH ERROR:",
+        error
+      );
+    }
+  }
+
+  fetchRealMarketData();
+
+  const interval = setInterval(
+    fetchRealMarketData,
+    15000
+  );
+
+  return () => clearInterval(interval);
+
+}, []);
+
   useEffect(() => {
 
   if (!tradeAlert) return;
@@ -234,27 +293,36 @@ const handleTakeTrade = () => {
   // PRE-ENTRY LIVE VALIDATION
   // ======================================
 
-  const liveDirectionMatches =
-    aiSignal.action === currentSignal.action;
+const liveDirectionOpposite =
+  (currentSignal.action === "BUY" &&
+    aiSignal.action === "SELL") ||
+  (currentSignal.action === "SELL" &&
+    aiSignal.action === "BUY");
 
-  const liveConfidenceStrong =
-    aiSignal.confidence >= 80;
+const liveMarketUnsafe =
+  aiSignal.riskLevel === "High" ||
+  aiSignal.marketCondition === "Sideways Market" ||
+  aiSignal.advice === "Wait for a clearer setup";
 
+if (
+  liveDirectionOpposite ||
+  liveMarketUnsafe
+) {
 
-  if (
-    !liveDirectionMatches ||
-    !liveConfidenceStrong
-  ) {
+console.log("⛔ TAKE TRADE BLOCKED", {
+  lockedAction: currentSignal.action,
+  lockedConfidence: currentSignal.confidence,
 
-    console.log(
-      "⛔ TAKE TRADE BLOCKED: Live market no longer confirms locked signal",
-      {
-        lockedAction: currentSignal.action,
-        lockedConfidence: currentSignal.confidence,
-        liveAction: aiSignal.action,
-        liveConfidence: aiSignal.confidence,
-      }
-    );
+  liveAction: aiSignal.action,
+  liveConfidence: aiSignal.confidence,
+
+  liveRisk: aiSignal.riskLevel,
+  liveMarketCondition: aiSignal.marketCondition,
+  liveAdvice: aiSignal.advice,
+
+  blockedByOppositeDirection: liveDirectionOpposite,
+  blockedByUnsafeMarket: liveMarketUnsafe,
+});
 
     setTradeAlert({
   type: "WARNING",
@@ -301,6 +369,15 @@ const handleTakeTrade = () => {
     activateTrade(plan);
 
   setActiveTrade(active);
+
+  console.log("📈 TRADE OPENED", {
+  action: active.action,
+  entry: active.entry,
+  stopLoss: active.stopLoss,
+  target1: active.target1,
+  target2: active.target2,
+  confidence: active.confidence,
+});
 
   setTradeAlert({
   type: "SUCCESS",
@@ -431,40 +508,7 @@ if (
 
 console.log("✅ TRADE PASSED ALL CHECKS");
 
-console.log("🔬 ===== ENTRY ANALYSIS DEBUG =====");
-console.log({
-  action: analysis.action,
-  confidence: analysis.confidence,
-  probability: analysis.probability,
-
-  price,
-  trend: analysis.trend,
-  marketStructure: analysis.marketStructure,
-  marketRegime: analysis.marketRegime,
-  marketCondition: analysis.marketCondition,
-
-  rsi: analysis.rsi,
-  ema20: analysis.ema20,
-  ema50: analysis.ema50,
-  macd: analysis.macd,
-  vwap: analysis.vwap,
-
-  pattern: analysis.pattern,
-  breakout: analysis.breakout,
-  volumeStrength: analysis.volumeStrength,
-
-  confirmationScore: analysis.confirmationScore,
-  entryScore: analysis.entryScore,
-
-  tradeQuality: analysis.tradeQuality,
-  opportunityRating: analysis.opportunityRating,
-
-  riskLevel: analysis.riskLevel,
-  advice: analysis.advice,
-
-  reasons: analysis.reasons,
-  summary: analysis.summary,
-});
+// Entry analysis debug logging temporarily disabled
 
 console.log("🚨 CREATING TRADE:",
   analysis.action,
@@ -851,7 +895,7 @@ const candidateEligible =
     isSellCandidate
   ) &&
   analysis.confidence >= 90 &&
-  passedConfirmations >= 4;
+  passedConfirmations >= 3;
 
 
 // ---------------------------------------
@@ -993,10 +1037,12 @@ if (activeTrade) {
     newNifty.price
   );
 
-  console.log(
-    "Updated Trade:",
-    JSON.stringify(updatedTrade, null, 2)
-  );
+/*
+console.log(
+  "Updated Trade:",
+  JSON.stringify(updatedTrade, null, 2)
+);
+*/
 
   // TARGET 1 ALERT
 if (
@@ -1314,6 +1360,56 @@ if (detectedPattern !== "No Pattern") {
   bankNiftyChange={bankNifty.change}
 />
 
+{realMarketData && (
+  <div className="mt-3 p-3 border rounded-lg">
+    <div className="font-semibold mb-2">
+      🌐 Real Market Data — Test Feed
+    </div>
+
+    <div>
+      NIFTY 50:{" "}
+      <strong>
+        {realMarketData.nifty.price?.toFixed(2)}
+      </strong>
+    </div>
+
+    <div>
+      BANK NIFTY:{" "}
+      <strong>
+        {realMarketData.bankNifty.price?.toFixed(2)}
+      </strong>
+    </div>
+    <div>
+  Real NIFTY candles:{" "}
+  <strong>{realNiftyCandles.length}</strong>
+</div>
+{realNiftyCandles.length > 0 && (
+  <div>
+    Latest candle:{" "}
+    <strong>
+      {new Date(
+        realNiftyCandles[
+          realNiftyCandles.length - 1
+        ].time
+      ).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Kolkata",
+      })}
+    </strong>
+
+    {" | Close: "}
+
+    <strong>
+      {realNiftyCandles[
+        realNiftyCandles.length - 1
+      ].close?.toFixed(2)}
+    </strong>
+  </div>
+)}
+  </div>
+)}
+
 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
 
 
@@ -1329,6 +1425,18 @@ if (detectedPattern !== "No Pattern") {
       patterns={patternHistory}
       levels={levels}
     />
+
+    <CandlestickChart
+  candles={realChartCandles}
+  ema20={[]}
+  ema50={[]}
+  signals={[]}
+  patterns={[]}
+  levels={{
+    support: [],
+    resistance: [],
+  }}
+/>
 
     <IndicatorPanel
       rsi={currentRSI}

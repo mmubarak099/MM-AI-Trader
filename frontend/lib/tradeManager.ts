@@ -313,6 +313,8 @@ if (
 
   target2Hit = true;
 
+  status = "TARGET 2 HIT";
+
   // Runner starts only after T2
   trailingStopEnabled = true;
 
@@ -573,6 +575,7 @@ result =
   trailingStopEnabled = false;
 
   closedAt = new Date();
+status = "CLOSED";
 
   const profitProtected =
   trade.action === "BUY"
