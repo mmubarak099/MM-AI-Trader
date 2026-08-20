@@ -3,26 +3,38 @@ export function detectBreakout(
   resistance: number[],
   support: number[]
 ) {
-  const highestResistance =
+
+  // Nearest resistance zone.
+  // We care about the first meaningful resistance
+  // that price needs to clear, not the furthest one.
+  const nearestResistance =
     resistance.length > 0
-      ? Math.max(...resistance)
+      ? Math.min(...resistance)
       : null;
 
-  const lowestSupport =
+  // Nearest support zone.
+  // We care about the first meaningful support
+  // that price needs to lose, not the furthest one.
+  const nearestSupport =
     support.length > 0
-      ? Math.min(...support)
+      ? Math.max(...support)
       : null;
+
+  // Keep the existing 5-point confirmation buffer
+  // for now so normal price noise is not classified
+  // as a breakout.
+  const breakoutBuffer = 5;
 
   if (
-    highestResistance !== null &&
-    price > highestResistance + 5
+    nearestResistance !== null &&
+    price > nearestResistance + breakoutBuffer
   ) {
     return "BREAKOUT";
   }
 
   if (
-    lowestSupport !== null &&
-    price < lowestSupport - 5
+    nearestSupport !== null &&
+    price < nearestSupport - breakoutBuffer
   ) {
     return "BREAKDOWN";
   }

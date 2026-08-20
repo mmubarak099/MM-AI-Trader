@@ -1596,15 +1596,26 @@ else {
 // Probability Engine
 // ===============================
 
+// Confidence should measure the STRENGTH of the setup,
+// not the DIRECTION of the setup.
+
 let probability = 50;
 
-probability += trendScore * 0.8;
-probability += momentumScore * 0.5;
-probability += movingAverageScore * 0.5;
-probability += breakoutScore * 0.7;
-probability += volumeScore * 0.4;
-probability += patternScore * 0.6;
-probability += structureScore * 0.4;
+probability += Math.abs(trendScore) * 0.8;
+
+probability += Math.abs(momentumScore) * 0.5;
+
+probability += Math.abs(movingAverageScore) * 0.5;
+
+probability += Math.abs(breakoutScore) * 0.7;
+
+probability += Math.abs(volumeScore) * 0.4;
+
+probability += Math.abs(patternScore) * 0.6;
+
+probability += Math.abs(structureScore) * 0.4;
+
+// Risk should remain directional.
 probability += riskScore * 0.3;
 
 // ===============================
@@ -1982,26 +1993,26 @@ console.log(
 // Trade Quality Engine
 // ===============================
 
-// Trade quality must reflect the FINAL ACTION.
-// A WAIT decision must never be presented as an A/A+ trade.
-
-if (action === "BUY" || action === "SELL") {
+if (action === "BUY") {
 
   if (score >= 90 && confidence >= 85) {
 
     tradeQuality = "A+";
 
   }
-  else if (score >= 75 && confidence >= 80) {
+
+  else if (score >= 75 && confidence >= 75) {
 
     tradeQuality = "A";
 
   }
-  else if (confidence >= 65) {
+
+  else if (confidence >= 60) {
 
     tradeQuality = "B";
 
   }
+
   else {
 
     tradeQuality = "C";
@@ -2009,11 +2020,41 @@ if (action === "BUY" || action === "SELL") {
   }
 
 }
+
+else if (action === "SELL") {
+
+  if (score <= 10 && confidence >= 85) {
+
+    tradeQuality = "A+";
+
+  }
+
+  else if (score <= 25 && confidence >= 75) {
+
+    tradeQuality = "A";
+
+  }
+
+  else if (confidence >= 60) {
+
+    tradeQuality = "B";
+
+  }
+
+  else {
+
+    tradeQuality = "C";
+
+  }
+
+}
+
 else if (action === "WATCH") {
 
   tradeQuality = "B";
 
 }
+
 else {
 
   tradeQuality = "C";
@@ -2023,9 +2064,6 @@ else {
 // ===============================
 // Final Action / Quality Consistency
 // ===============================
-
-// WATCH and WAIT are not executable trade signals.
-// They must never be classified as A or A+ opportunities.
 
 if (action === "WAIT") {
 
@@ -2043,37 +2081,43 @@ if (action === "WATCH") {
 // Final Decision Validator
 // ===============================
 
-if (action === "BUY") {
+if (
 
-  if (
-    data.marketStructure === "SIDEWAYS" &&
-    confirmationScore < 60
-  ) {
+  action === "BUY" &&
 
-    action = "WAIT";
+  data.marketStructure === "SIDEWAYS" &&
 
-    reasons.push(
-      "BUY rejected because the market is still ranging."
-    );
+  confirmationScore < 60
 
-  }
+) {
+
+  action = "WAIT";
+
+  reasons.push(
+
+    "BUY rejected because the market is still ranging."
+
+  );
 
 }
 
-if (action === "SELL") {
+if (
 
-  if (
-    data.marketStructure === "SIDEWAYS" &&
-    bearishConfirmations < 5
-  ) {
+  action === "SELL" &&
 
-    action = "WAIT";
+  data.marketStructure === "SIDEWAYS" &&
 
-    reasons.push(
-      "SELL rejected because the market is still ranging."
-    );
+  bearishConfirmations < 5
 
-  }
+) {
+
+  action = "WAIT";
+
+  reasons.push(
+
+    "SELL rejected because the market is still ranging."
+
+  );
 
 }
 
@@ -2086,21 +2130,46 @@ if (tradeQuality === "C") {
   action = "WAIT";
 
   reasons.push(
+
     "Trade quality is too low."
+
   );
 
 }
-else if (tradeQuality === "B") {
 
-  if (action !== "WAIT") {
+else if (
 
-    action = "WATCH";
+  tradeQuality === "B" &&
 
-    reasons.push(
-      "Trade requires additional confirmation."
-    );
+  action === "BUY"
 
-  }
+) {
+
+  action = "WATCH";
+
+  reasons.push(
+
+    "BUY setup requires additional confirmation."
+
+  );
+
+}
+
+else if (
+
+  tradeQuality === "B" &&
+
+  action === "SELL"
+
+) {
+
+  action = "WATCH";
+
+  reasons.push(
+
+    "SELL setup requires additional confirmation."
+
+  );
 
 }
 

@@ -35,6 +35,7 @@ import { analyzeVolume } from "../lib/volumeAnalyzer";
 import { validateSignal } from "../lib/signalValidator";
 import { manageTrade } from "../lib/tradeManagerAI";
 import { analyzeRealTimeframe } from "../lib/realMarketAnalyzer";
+import { analyzeMultiTimeframe } from "../lib/multiTimeframeAnalyzer";
 import {
   activateTrade,
   updateTrade,
@@ -285,6 +286,12 @@ const stableSignalDirectionRef =
 const stableSignalCountRef =
   useRef(0);
 
+  const realStableSignalDirectionRef =
+  useRef<"BUY" | "SELL" | null>(null);
+
+const realStableSignalCountRef =
+  useRef(0);
+
 // ------------------------------
 
 const [patternHistory, setPatternHistory] =
@@ -345,43 +352,36 @@ const [realRSI, setRealRSI] =
 const [analysis1m, setAnalysis1m] =
   useState<any>(null);
 
-  const realConfirmationChecks = [
+  const [multiTimeframeAnalysis, setMultiTimeframeAnalysis] =
+  useState<any>(null);
+
+  const [qualifiedRealSignal, setQualifiedRealSignal] =
+  useState<any>(null);
+
+const realConfirmationChecks = [
+
   // 1. Trend
-  realAIAnalysis?.action === "BUY"
-    ? realTrend === "Bullish"
-    : realAIAnalysis?.action === "SELL"
-    ? realTrend === "Bearish"
-    : false,
+  realTrend === "Bullish" ||
+  realTrend === "Bearish",
 
   // 2. Pattern
-  realAIAnalysis?.action === "BUY"
-    ? (
-        realPattern === "Bullish Engulfing" ||
-        realPattern === "Hammer"
-      )
-    : realAIAnalysis?.action === "SELL"
-    ? realPattern === "Bearish Engulfing"
-    : false,
+  realPattern === "Bullish Engulfing" ||
+  realPattern === "Bearish Engulfing" ||
+  realPattern === "Hammer",
 
   // 3. Structure
-  realAIAnalysis?.action === "BUY"
-    ? realMarketStructure === "UPTREND"
-    : realAIAnalysis?.action === "SELL"
-    ? realMarketStructure === "DOWNTREND"
-    : false,
+  realMarketStructure === "UPTREND" ||
+  realMarketStructure === "DOWNTREND",
 
   // 4. Breakout
-  realAIAnalysis?.action === "BUY"
-    ? realBreakout === "BREAKOUT"
-    : realAIAnalysis?.action === "SELL"
-    ? realBreakout === "BREAKDOWN"
-    : false,
+  realBreakout === "BREAKOUT" ||
+  realBreakout === "BREAKDOWN",
 
   // 5. Volume
   false,
 
   // 6. Confidence
-  (realAIAnalysis?.confidence ?? 0) >= 90,
+  (realAIAnalysis?.confidence ?? 0) >= 50,
 ];
 
 const realPassedConfirmations =
@@ -434,6 +434,16 @@ useEffect(() => {
     realNiftyCandles[
       realNiftyCandles.length - 2
     ];
+
+   console.log("🌐 REAL VALUES SENT TO V1", {
+  realTrend,
+  realRSI,
+  realEMA20,
+  realEMA50,
+  realPattern,
+  realMarketStructure,
+  realBreakout,
+});
 
   const analysis = analyzeMarketV1({
     price: realMarketData.nifty.price,
@@ -510,6 +520,224 @@ useEffect(() => {
   realMarketData,
   realNiftyCandles1m,
 ]);
+
+useEffect(() => {
+
+  if (
+    !analysis5m ||
+    !analysis1m
+  ) {
+    return;
+  }
+
+  const result =
+    analyzeMultiTimeframe(
+      analysis5m,
+      analysis1m
+    );
+
+  setMultiTimeframeAnalysis(
+    result
+  );
+
+}, [
+  analysis5m,
+  analysis1m,
+]);
+
+useEffect(() => {
+  if (
+    !realAIAnalysis ||
+    !multiTimeframeAnalysis
+  ) {
+    setQualifiedRealSignal(null);
+    return;
+  }
+
+  const v1Direction =
+    realAIAnalysis.action;
+
+  const mtfDirection =
+    multiTimeframeAnalysis.direction;
+
+  const directionMatches =
+    (
+      v1Direction === "BUY" ||
+      v1Direction === "SELL"
+    ) &&
+    v1Direction === mtfDirection;
+
+  const entryReady =
+    multiTimeframeAnalysis.entryState ===
+    "READY";
+
+  const confidenceReady =
+    realAIAnalysis.confidence >= 90;
+
+  const confirmationsReady =
+    realPassedConfirmations >= 4;
+
+  const qualified =
+    directionMatches &&
+    entryReady &&
+    confidenceReady &&
+    confirmationsReady;
+
+  setQualifiedRealSignal({
+    action: qualified
+      ? v1Direction
+      : "WAIT",
+
+    qualified,
+
+    confidence:
+      realAIAnalysis.confidence,
+
+    confirmations:
+      realPassedConfirmations,
+
+    v1Direction,
+
+    mtfDirection,
+
+    entryState:
+      multiTimeframeAnalysis.entryState,
+
+    reason: qualified
+      ? "Real V1 and multi-timeframe entry conditions are aligned."
+      : !directionMatches
+      ? "V1 and multi-timeframe directions are not aligned."
+      : !entryReady
+      ? "Multi-timeframe entry is not ready."
+      : !confidenceReady
+      ? "Real V1 confidence is below 90%."
+      : !confirmationsReady
+      ? "Real confirmations are below 4 of 6."
+      : "Signal is not qualified.",
+  });
+
+}, [
+  realAIAnalysis,
+  multiTimeframeAnalysis,
+  realPassedConfirmations,
+]);
+
+useEffect(() => {
+
+  if (
+    !qualifiedRealSignal ||
+    !realAIAnalysis ||
+    realMarketData?.nifty?.price == null
+  ) {
+    return;
+  }
+
+  // ---------------------------------------
+  // Real signal/trade availability
+  // ---------------------------------------
+
+  const realSignalEngineAvailable =
+    !signalLocked &&
+    !tradeCooldown &&
+    !currentSignal &&
+    !activeTrade;
+
+  // ---------------------------------------
+  // Reset stability when real setup is
+  // no longer qualified
+  // ---------------------------------------
+
+  if (
+    !qualifiedRealSignal.qualified ||
+    qualifiedRealSignal.action === "WAIT"
+  ) {
+
+    realStableSignalDirectionRef.current =
+      null;
+
+    realStableSignalCountRef.current = 0;
+
+    return;
+  }
+
+  if (!realSignalEngineAvailable) {
+    return;
+  }
+
+  const candidateDirection =
+    qualifiedRealSignal.action as
+      | "BUY"
+      | "SELL";
+
+  // ---------------------------------------
+  // Real signal stability counter
+  // ---------------------------------------
+
+  if (
+    realStableSignalDirectionRef.current ===
+    candidateDirection
+  ) {
+
+    realStableSignalCountRef.current += 1;
+
+  } else {
+
+    realStableSignalDirectionRef.current =
+      candidateDirection;
+
+    realStableSignalCountRef.current = 1;
+
+  }
+
+  console.log(
+    "🌐 REAL SIGNAL STABILITY CHECK:",
+    {
+      direction: candidateDirection,
+      stability:
+        realStableSignalCountRef.current,
+      required: 2,
+      confidence:
+        realAIAnalysis.confidence,
+      confirmations:
+        realPassedConfirmations,
+      entryState:
+        multiTimeframeAnalysis?.entryState,
+    }
+  );
+
+  // ---------------------------------------
+  // Wait for two stable qualified cycles
+  // ---------------------------------------
+
+  if (
+    realStableSignalCountRef.current < 2
+  ) {
+    return;
+  }
+
+  console.log(
+    "✅ REAL STABLE SIGNAL CONFIRMED:",
+    {
+      action: candidateDirection,
+      confidence:
+        realAIAnalysis.confidence,
+      confirmations:
+        realPassedConfirmations,
+    }
+  );
+
+}, [
+  qualifiedRealSignal,
+  realAIAnalysis,
+  realMarketData,
+  realPassedConfirmations,
+  multiTimeframeAnalysis,
+  signalLocked,
+  tradeCooldown,
+  currentSignal,
+  activeTrade,
+]);
+
   const [ema20History, setEma20History] =
   useState<number[]>([]);
 
@@ -1101,7 +1329,7 @@ const marketTrend =
     
 console.log("Pattern being sent to AI:", detectedPattern);
 
-
+console.group("🧪 SIMULATOR V1 ANALYSIS");
       const analysis = analyzeMarketV1({
   price: newNifty.price,
   previousPrice: nifty.price,
@@ -1118,7 +1346,7 @@ console.log("Pattern being sent to AI:", detectedPattern);
   volumeStrength,
 
 });
-
+console.groupEnd();
 
 console.log("========== V1 AI ANALYSIS ==========");
 
@@ -1773,6 +2001,35 @@ if (detectedPattern !== "No Pattern") {
   <strong>{realTrend}</strong>
 </div>
 <div>
+  Debug realTrend:{" "}
+  <strong>{realTrend}</strong>
+</div>
+
+<div>
+  Debug realRSI:{" "}
+  <strong>{realRSI ?? "--"}</strong>
+</div>
+
+<div>
+  Debug realEMA20:{" "}
+  <strong>{realEMA20 ?? "--"}</strong>
+</div>
+
+<div>
+  Debug realEMA50:{" "}
+  <strong>{realEMA50 ?? "--"}</strong>
+</div>
+
+<div>
+  Debug realMarketStructure:{" "}
+  <strong>{realMarketStructure}</strong>
+</div>
+
+<div>
+  Debug realBreakout:{" "}
+  <strong>{realBreakout}</strong>
+</div>
+<div>
   Analyzer 5m Trend:{" "}
   <strong>
     {analysis5m?.trend ?? "--"}
@@ -1839,6 +2096,58 @@ if (detectedPattern !== "No Pattern") {
     {analysis1m?.breakout ?? "--"}
   </strong>
 </div>
+
+<div>
+  Multi-Timeframe Direction:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.direction ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Alignment:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.alignment ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Entry State:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.entryState ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Reason:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.reasons?.[0] ?? "--"}
+  </strong>
+</div>
+
+<div className="mt-2">
+  Qualified Real Signal:{" "}
+  <strong>
+    {qualifiedRealSignal?.action ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Qualified:{" "}
+  <strong>
+    {qualifiedRealSignal?.qualified
+      ? "YES"
+      : "NO"}
+  </strong>
+</div>
+
+<div>
+  Qualification Reason:{" "}
+  <strong>
+    {qualifiedRealSignal?.reason ?? "--"}
+  </strong>
+</div>
+
 <div className="mt-2">
   Real V1 Action:{" "}
   <strong>
@@ -1852,6 +2161,55 @@ if (detectedPattern !== "No Pattern") {
     {realAIAnalysis?.confidence ?? "--"}%
   </strong>
 </div>
+<div>
+  Real V1 Probability:{" "}
+  <strong>
+    {realAIAnalysis?.probability ?? "--"}%
+  </strong>
+</div>
+
+<div>
+  Real V1 Trend Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.trend ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Momentum Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.momentum ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 EMA Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.ema ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Structure Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.structure ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Breakout Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.breakout ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Risk Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.risk ?? "--"}
+  </strong>
+</div>
+
 <div>
   Real Confirmations:{" "}
   <strong>
