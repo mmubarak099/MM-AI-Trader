@@ -63,6 +63,8 @@ import type { TradeSignal } from "../types/tradeSignal";
 
 export default function Home() {
 
+  const [executionMode, setExecutionMode] =
+  useState<"REAL" | "SIMULATOR">("REAL");
 
   const [nifty, setNifty] = useState({
     price: 24650,
@@ -824,12 +826,14 @@ useEffect(() => {
     "NORMAL",
 };
 
+if (executionMode === "REAL") {
 processTradeEngine(
   realExecutionAnalysis,
   realMarketData.nifty.price,
   realPassedConfirmations,
   "REAL"
 );
+}
 
 realStableSignalDirectionRef.current =
   null;
@@ -846,6 +850,7 @@ realStableSignalCountRef.current = 0;
   tradeCooldown,
   currentSignal,
   activeTrade,
+  executionMode,
 ]);
 
   const [ema20History, setEma20History] =
@@ -942,32 +947,74 @@ const handleTakeTrade = () => {
 
 
   // ======================================
-  // REAL PRE-ENTRY LIVE VALIDATION
+  // SOURCE-AWARE PRE-ENTRY VALIDATION
   // ======================================
 
-  const realSignalStillQualified =
-    qualifiedRealSignal?.qualified === true;
+  if (currentSignal.source === "REAL") {
 
-  const realDirectionStillMatches =
-    qualifiedRealSignal?.action ===
-      currentSignal.action &&
-    realAIAnalysis?.action ===
-      currentSignal.action &&
-    multiTimeframeAnalysis?.direction ===
-      currentSignal.action;
+    // --------------------------------------
+    // REAL MARKET VALIDATION
+    // --------------------------------------
 
-  const realEntryStillReady =
-    multiTimeframeAnalysis?.entryState ===
-      "READY";
+    const realSignalStillQualified =
+      qualifiedRealSignal?.qualified === true;
 
-  if (
-    !realSignalStillQualified ||
-    !realDirectionStillMatches ||
-    !realEntryStillReady
-  ) {
+    const realDirectionStillMatches =
+      qualifiedRealSignal?.action ===
+        currentSignal.action &&
+      realAIAnalysis?.action ===
+        currentSignal.action &&
+      multiTimeframeAnalysis?.direction ===
+        currentSignal.action;
+
+    const realEntryStillReady =
+      multiTimeframeAnalysis?.entryState ===
+        "READY";
+
+    if (
+      !realSignalStillQualified ||
+      !realDirectionStillMatches ||
+      !realEntryStillReady
+    ) {
+
+      console.log(
+        "⛔ REAL TAKE TRADE BLOCKED",
+        {
+          lockedAction:
+            currentSignal.action,
+
+          realV1Action:
+            realAIAnalysis?.action,
+
+          qualifiedAction:
+            qualifiedRealSignal?.action,
+
+          qualified:
+            qualifiedRealSignal?.qualified,
+
+          mtfDirection:
+            multiTimeframeAnalysis?.direction,
+
+          mtfEntryState:
+            multiTimeframeAnalysis?.entryState,
+
+          reason:
+            qualifiedRealSignal?.reason,
+        }
+      );
+
+      setTradeAlert({
+        type: "WARNING",
+        title: "Trade Blocked",
+        message:
+          `Locked ${currentSignal.action} signal is no longer qualified by the real market.`,
+      });
+
+      return;
+    }
 
     console.log(
-      "⛔ REAL TAKE TRADE BLOCKED",
+      "✅ REAL PRE-ENTRY VALIDATION PASSED",
       {
         lockedAction:
           currentSignal.action,
@@ -978,55 +1025,89 @@ const handleTakeTrade = () => {
         qualifiedAction:
           qualifiedRealSignal?.action,
 
-        qualified:
-          qualifiedRealSignal?.qualified,
-
         mtfDirection:
           multiTimeframeAnalysis?.direction,
 
         mtfEntryState:
           multiTimeframeAnalysis?.entryState,
-
-        reason:
-          qualifiedRealSignal?.reason,
       }
     );
 
-    setTradeAlert({
-      type: "WARNING",
-      title: "Trade Blocked",
-      message:
-        `Locked ${currentSignal.action} signal is no longer qualified by the real market.`,
-    });
+  } else {
 
-    return;
-  }
+    // --------------------------------------
+    // SIMULATOR VALIDATION
+    // --------------------------------------
 
-  console.log(
-    "✅ REAL PRE-ENTRY VALIDATION PASSED",
-    {
-      lockedAction:
-        currentSignal.action,
+    const liveDirectionOpposite =
+      (
+        currentSignal.action === "BUY" &&
+        aiSignal.action === "SELL"
+      ) ||
+      (
+        currentSignal.action === "SELL" &&
+        aiSignal.action === "BUY"
+      );
 
-      realV1Action:
-        realAIAnalysis?.action,
+    const liveMarketUnsafe =
+      aiSignal.riskLevel === "High" ||
+      aiSignal.marketCondition ===
+        "Sideways Market" ||
+      aiSignal.advice ===
+        "Wait for a clearer setup";
 
-      qualifiedAction:
-        qualifiedRealSignal?.action,
+    if (
+      liveDirectionOpposite ||
+      liveMarketUnsafe
+    ) {
 
-      mtfDirection:
-        multiTimeframeAnalysis?.direction,
+      console.log(
+        "⛔ SIMULATOR TAKE TRADE BLOCKED",
+        {
+          lockedAction:
+            currentSignal.action,
 
-      mtfEntryState:
-        multiTimeframeAnalysis?.entryState,
+          liveAction:
+            aiSignal.action,
 
-      realConfidence:
-        realAIAnalysis?.confidence,
+          liveConfidence:
+            aiSignal.confidence,
 
-      realConfirmations:
-        realPassedConfirmations,
+          liveRisk:
+            aiSignal.riskLevel,
+
+          liveMarketCondition:
+            aiSignal.marketCondition,
+
+          liveAdvice:
+            aiSignal.advice,
+        }
+      );
+
+      setTradeAlert({
+        type: "WARNING",
+        title: "Trade Blocked",
+        message:
+          `Locked ${currentSignal.action} simulator signal is no longer confirmed.`,
+      });
+
+      return;
     }
-  );
+
+    console.log(
+      "✅ SIMULATOR PRE-ENTRY VALIDATION PASSED",
+      {
+        lockedAction:
+          currentSignal.action,
+
+        liveAction:
+          aiSignal.action,
+
+        liveConfidence:
+          aiSignal.confidence,
+      }
+    );
+  }
 
 
   // ======================================
@@ -1688,14 +1769,14 @@ setTradeAlert({
   message: `${analysis.action} signal confirmed at ${analysis.confidence}% confidence with ${passedConfirmations}/6 confirmations.`,
 });
 
-/*
-processTradeEngine(
-  analysis,
-  newNifty.price,
-  passedConfirmations,
-  "SIMULATOR"
-);
-*/
+if (executionMode === "SIMULATOR") {
+  processTradeEngine(
+    analysis,
+    newNifty.price,
+    passedConfirmations,
+    "SIMULATOR"
+  );
+}
 
     // A new future signal must prove
     // stability again from zero.
@@ -2022,11 +2103,13 @@ if (detectedPattern !== "No Pattern") {
 
 
 
-  }, [
+}, [
   nifty,
   bankNifty,
   priceHistory,
   activeTrade,
+  executionMode,
+  realMarketData?.nifty?.price,
 ]);
 
 
@@ -2450,6 +2533,90 @@ if (detectedPattern !== "No Pattern") {
 )}
   </div>
 )}
+
+{/* ================= EXECUTION MODE ================= */}
+
+<div className="mt-4 p-3 border border-gray-800 rounded-lg bg-gray-900">
+
+  <div className="flex items-center justify-between gap-4">
+
+    <div>
+      <div className="text-sm font-semibold">
+        Execution Mode
+      </div>
+
+      <div className="text-xs text-gray-400 mt-1">
+        Controls which market source can create Trade Plans.
+      </div>
+    </div>
+
+    <div className="flex gap-2">
+
+      <button
+        type="button"
+        onClick={() =>
+          setExecutionMode("REAL")
+        }
+        disabled={
+          !!currentSignal ||
+          !!activeTrade
+        }
+        className={`px-4 py-2 rounded-md text-sm font-semibold border ${
+          executionMode === "REAL"
+            ? "bg-green-700 border-green-500 text-white"
+            : "bg-gray-800 border-gray-700 text-gray-300"
+        } ${
+          currentSignal || activeTrade
+            ? "opacity-50 cursor-not-allowed"
+            : ""
+        }`}
+      >
+        REAL
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          setExecutionMode("SIMULATOR")
+        }
+        disabled={
+          !!currentSignal ||
+          !!activeTrade
+        }
+        className={`px-4 py-2 rounded-md text-sm font-semibold border ${
+          executionMode === "SIMULATOR"
+            ? "bg-blue-700 border-blue-500 text-white"
+            : "bg-gray-800 border-gray-700 text-gray-300"
+        } ${
+          currentSignal || activeTrade
+            ? "opacity-50 cursor-not-allowed"
+            : ""
+        }`}
+      >
+        SIMULATOR
+      </button>
+
+    </div>
+
+  </div>
+
+  <div className="mt-2 text-xs text-gray-400">
+
+    Current mode:{" "}
+
+    <strong className="text-white">
+      {executionMode}
+    </strong>
+
+    {(currentSignal || activeTrade) && (
+      <span className="ml-2 text-yellow-400">
+        — mode locked while a signal or trade is active
+      </span>
+    )}
+
+  </div>
+
+</div>
 
 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
 
