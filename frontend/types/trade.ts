@@ -4,6 +4,10 @@ export type TradeAction =
   | "BUY"
   | "SELL";
 
+export type TradeSource =
+  | "SIMULATOR"
+  | "REAL";
+
 export type TradeStatus =
   | "PENDING"
   | "ACTIVE"
@@ -26,6 +30,8 @@ export interface Trade {
   id: string;
 
   action: TradeAction;
+
+  source?: TradeSource;
 
   entry: number;
 

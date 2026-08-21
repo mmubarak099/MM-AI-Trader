@@ -87,15 +87,95 @@ const [realNiftyCandles, setRealNiftyCandles] =
   const [realNiftyCandles1m, setRealNiftyCandles1m] =
   useState<any[]>([]);
 
-  const realChartCandles = realNiftyCandles.map(
-  (candle) => ({
-    open: candle.open,
-    high: candle.high,
-    low: candle.low,
-    close: candle.close,
-    volume: 0,
-  })
-);
+  const [liveRealCandle, setLiveRealCandle] =
+  useState<any>(null);
+
+useEffect(() => {
+
+  const price =
+    realMarketData?.nifty?.price;
+
+  if (price == null) {
+    return;
+  }
+
+  const marketTimestamp =
+    realMarketData?.nifty?.time
+      ? new Date(
+          realMarketData.nifty.time
+        ).getTime()
+      : Date.now();
+
+  // Align time into a 5-minute candle bucket.
+  const fiveMinutes =
+    5 * 60 * 1000;
+
+  const candleStart =
+    Math.floor(
+      marketTimestamp / fiveMinutes
+    ) * fiveMinutes;
+
+  setLiveRealCandle(
+    (previous: any) => {
+
+      // Start first live candle,
+      // or start a fresh candle when
+      // the 5-minute period changes.
+      if (
+        !previous ||
+        previous.candleStart !==
+          candleStart
+      ) {
+
+        return {
+          candleStart,
+          open: price,
+          high: price,
+          low: price,
+          close: price,
+          volume: 0,
+        };
+      }
+
+      // Update the currently forming candle.
+      return {
+        ...previous,
+
+        high: Math.max(
+          previous.high,
+          price
+        ),
+
+        low: Math.min(
+          previous.low,
+          price
+        ),
+
+        close: price,
+      };
+    }
+  );
+
+}, [
+  realMarketData?.nifty?.price,
+  realMarketData?.nifty?.time,
+]);
+
+const realChartCandles = [
+  ...realNiftyCandles.map(
+    (candle) => ({
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+      volume: 0,
+    })
+  ),
+
+  ...(liveRealCandle
+    ? [liveRealCandle]
+    : []),
+];
 
 const realClosePrices =
   realNiftyCandles.map(
@@ -726,6 +806,36 @@ useEffect(() => {
     }
   );
 
+  const realExecutionAnalysis = {
+  ...realAIAnalysis,
+
+  action: candidateDirection,
+
+  pattern:
+    realPattern,
+
+  marketStructure:
+    realMarketStructure,
+
+  breakout:
+    realBreakout,
+
+  volumeStrength:
+    "NORMAL",
+};
+
+processTradeEngine(
+  realExecutionAnalysis,
+  realMarketData.nifty.price,
+  realPassedConfirmations,
+  "REAL"
+);
+
+realStableSignalDirectionRef.current =
+  null;
+
+realStableSignalCountRef.current = 0;
+
 }, [
   qualifiedRealSignal,
   realAIAnalysis,
@@ -832,57 +942,89 @@ const handleTakeTrade = () => {
 
 
   // ======================================
-  // PRE-ENTRY LIVE VALIDATION
+  // REAL PRE-ENTRY LIVE VALIDATION
   // ======================================
 
-const liveDirectionOpposite =
-  (currentSignal.action === "BUY" &&
-    aiSignal.action === "SELL") ||
-  (currentSignal.action === "SELL" &&
-    aiSignal.action === "BUY");
+  const realSignalStillQualified =
+    qualifiedRealSignal?.qualified === true;
 
-const liveMarketUnsafe =
-  aiSignal.riskLevel === "High" ||
-  aiSignal.marketCondition === "Sideways Market" ||
-  aiSignal.advice === "Wait for a clearer setup";
+  const realDirectionStillMatches =
+    qualifiedRealSignal?.action ===
+      currentSignal.action &&
+    realAIAnalysis?.action ===
+      currentSignal.action &&
+    multiTimeframeAnalysis?.direction ===
+      currentSignal.action;
 
-if (
-  liveDirectionOpposite ||
-  liveMarketUnsafe
-) {
+  const realEntryStillReady =
+    multiTimeframeAnalysis?.entryState ===
+      "READY";
 
-console.log("⛔ TAKE TRADE BLOCKED", {
-  lockedAction: currentSignal.action,
-  lockedConfidence: currentSignal.confidence,
+  if (
+    !realSignalStillQualified ||
+    !realDirectionStillMatches ||
+    !realEntryStillReady
+  ) {
 
-  liveAction: aiSignal.action,
-  liveConfidence: aiSignal.confidence,
+    console.log(
+      "⛔ REAL TAKE TRADE BLOCKED",
+      {
+        lockedAction:
+          currentSignal.action,
 
-  liveRisk: aiSignal.riskLevel,
-  liveMarketCondition: aiSignal.marketCondition,
-  liveAdvice: aiSignal.advice,
+        realV1Action:
+          realAIAnalysis?.action,
 
-  blockedByOppositeDirection: liveDirectionOpposite,
-  blockedByUnsafeMarket: liveMarketUnsafe,
-});
+        qualifiedAction:
+          qualifiedRealSignal?.action,
+
+        qualified:
+          qualifiedRealSignal?.qualified,
+
+        mtfDirection:
+          multiTimeframeAnalysis?.direction,
+
+        mtfEntryState:
+          multiTimeframeAnalysis?.entryState,
+
+        reason:
+          qualifiedRealSignal?.reason,
+      }
+    );
 
     setTradeAlert({
-  type: "WARNING",
-  title: "Trade Blocked",
-  message: `Locked ${currentSignal.action} signal is no longer confirmed by the live market.`,
-});
+      type: "WARNING",
+      title: "Trade Blocked",
+      message:
+        `Locked ${currentSignal.action} signal is no longer qualified by the real market.`,
+    });
 
     return;
   }
 
-
   console.log(
-    "✅ PRE-ENTRY VALIDATION PASSED",
+    "✅ REAL PRE-ENTRY VALIDATION PASSED",
     {
-      lockedAction: currentSignal.action,
-      lockedConfidence: currentSignal.confidence,
-      liveAction: aiSignal.action,
-      liveConfidence: aiSignal.confidence,
+      lockedAction:
+        currentSignal.action,
+
+      realV1Action:
+        realAIAnalysis?.action,
+
+      qualifiedAction:
+        qualifiedRealSignal?.action,
+
+      mtfDirection:
+        multiTimeframeAnalysis?.direction,
+
+      mtfEntryState:
+        multiTimeframeAnalysis?.entryState,
+
+      realConfidence:
+        realAIAnalysis?.confidence,
+
+      realConfirmations:
+        realPassedConfirmations,
     }
   );
 
@@ -909,7 +1051,8 @@ console.log("⛔ TAKE TRADE BLOCKED", {
 
   const active =
     activateTrade(plan);
-
+active.source =
+  currentSignal.source;
   setActiveTrade(active);
 
   console.log("📈 TRADE OPENED", {
@@ -948,7 +1091,8 @@ console.log("⛔ TAKE TRADE BLOCKED", {
 function processTradeEngine(
   analysis: any,
   price: number,
-  confirmations: number
+  confirmations: number,
+  source: "SIMULATOR" | "REAL"
 ) {
 
   console.log("========== TRADE ENGINE CHECK ==========");
@@ -1017,25 +1161,44 @@ if (analysis.action !== "BUY" && analysis.action !== "SELL") {
   }
 
   // Reject weak market conditions even when confidence is high
+const directionAlignedStrongMarket =
+  (
+    analysis.action === "BUY" &&
+    analysis.marketRegime === "TRENDING_BULLISH" &&
+    analysis.marketCondition === "Strong Bullish"
+  ) ||
+  (
+    analysis.action === "SELL" &&
+    analysis.marketRegime === "TRENDING_BEARISH" &&
+    analysis.marketCondition === "Strong Bearish"
+  );
+
+const highRiskActuallyUnsafe =
+  analysis.riskLevel === "High" &&
+  !directionAlignedStrongMarket;
+
 if (
   analysis.marketRegime === "RANGING" ||
   analysis.marketCondition === "Sideways Market" ||
-  analysis.riskLevel === "High" ||
-  analysis.advice === "Wait for a clearer setup"
+  analysis.advice === "Wait for a clearer setup" ||
+  highRiskActuallyUnsafe
 ) {
+
   console.log(
-    "Trade rejected: Market conditions are not suitable",
+    "❌ TRADE REJECTED: Market conditions are not suitable",
     {
+      action: analysis.action,
       marketRegime: analysis.marketRegime,
       marketCondition: analysis.marketCondition,
       riskLevel: analysis.riskLevel,
       advice: analysis.advice,
+      directionAlignedStrongMarket,
+      highRiskActuallyUnsafe,
     }
   );
 
   return;
 }
-
   // 4. Duplicate signal protection
   if (
     analysis.action === lastSignal &&
@@ -1081,6 +1244,7 @@ console.log("🚨 CREATING TRADE:",
   setCurrentSignal({
     id: plan.id,
     action: plan.action,
+source,
     confidence: plan.confidence,
     confirmationCount: confirmations,
 
@@ -1524,11 +1688,14 @@ setTradeAlert({
   message: `${analysis.action} signal confirmed at ${analysis.confidence}% confidence with ${passedConfirmations}/6 confirmations.`,
 });
 
+/*
 processTradeEngine(
   analysis,
   newNifty.price,
-  passedConfirmations
+  passedConfirmations,
+  "SIMULATOR"
 );
+*/
 
     // A new future signal must prove
     // stability again from zero.
@@ -1572,11 +1739,19 @@ processTradeEngine(
 
 }
 
-if (activeTrade) {
+const activeTradePrice =
+  activeTrade?.source === "REAL"
+    ? realMarketData?.nifty?.price
+    : newNifty.price;
+
+if (
+  activeTrade &&
+  activeTradePrice != null
+) {
 
   const updatedTrade = updateTrade(
     activeTrade,
-    newNifty.price
+    activeTradePrice
   );
 
 /*
@@ -2293,7 +2468,7 @@ if (detectedPattern !== "No Pattern") {
     />
 
     <CandlestickChart
-  candles={realChartCandles}
+  candles={realChartCandles.slice(-50)}
   ema20={[]}
   ema50={[]}
   signals={[]}

@@ -1,8 +1,12 @@
+import type { TradeSource } from "./trade";
+
 export interface TradeSignal {
 
   id: string;
 
   action: "BUY" | "SELL";
+
+  source?: TradeSource;
 
   confidence: number;
 
