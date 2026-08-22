@@ -6,7 +6,8 @@ export type TradeAction =
 
 export type TradeSource =
   | "SIMULATOR"
-  | "REAL";
+  | "REAL"
+  | "REPLAY";
 
 export type TradeStatus =
   | "PENDING"

@@ -37,6 +37,9 @@ import { manageTrade } from "../lib/tradeManagerAI";
 import { analyzeRealTimeframe } from "../lib/realMarketAnalyzer";
 import { analyzeMultiTimeframe } from "../lib/multiTimeframeAnalyzer";
 import {
+  validateExecution,
+} from "../lib/executionValidator";
+import {
   activateTrade,
   updateTrade,
 } from "../lib/tradeManager";
@@ -47,6 +50,18 @@ import {
 import {
   createTradePlan,
 } from "../lib/tradePlanner";
+import {
+  createReplayState,
+  stepReplay,
+  resetReplay,
+  getReplayCurrentCandle,
+  getReplayCandlesSoFar,
+  getReplayProgress,
+} from "../lib/replayEngine";
+
+import {
+  sampleReplayCandles,
+} from "../lib/replayData";
 import {
   calculateMovingAverage,
   getTrend,
@@ -63,8 +78,12 @@ import type { TradeSignal } from "../types/tradeSignal";
 
 export default function Home() {
 
-  const [executionMode, setExecutionMode] =
-  useState<"REAL" | "SIMULATOR">("REAL");
+const [executionMode, setExecutionMode] =
+  useState<
+    "REAL" |
+    "SIMULATOR" |
+    "REPLAY"
+  >("REAL");
 
   const [nifty, setNifty] = useState({
     price: 24650,
@@ -91,6 +110,534 @@ const [realNiftyCandles, setRealNiftyCandles] =
 
   const [liveRealCandle, setLiveRealCandle] =
   useState<any>(null);
+
+const [replayState, setReplayState] =
+  useState(
+    createReplayState(
+      sampleReplayCandles
+    )
+  );
+
+const replayCurrentCandle =
+  getReplayCurrentCandle(
+    replayState
+  );
+
+const replayCandlesSoFar =
+  getReplayCandlesSoFar(
+    replayState
+  );
+
+const replayProgress =
+  getReplayProgress(
+    replayState
+  );
+
+
+// ======================================
+// HISTORICAL REPLAY DATA
+// ======================================
+
+const [historicalReplay5m, setHistoricalReplay5m] =
+  useState<any[]>([]);
+
+const [historicalReplay1m, setHistoricalReplay1m] =
+  useState<any[]>([]);
+
+const [historicalReplayWarmup5m, setHistoricalReplayWarmup5m] =
+  useState<any[]>([]);
+
+const [historicalReplayWarmup1m, setHistoricalReplayWarmup1m] =
+  useState<any[]>([]);
+
+const [replayLoaded, setReplayLoaded] =
+  useState(false);
+
+  const [replayRunning, setReplayRunning] =
+  useState(false);
+
+  const [replayAnalysis5m, setReplayAnalysis5m] =
+  useState<any>(null);
+
+const [replayAnalysis1m, setReplayAnalysis1m] =
+  useState<any>(null);
+
+const [replayMultiTimeframe, setReplayMultiTimeframe] =
+  useState<any>(null);
+
+  const [replayAIAnalysis, setReplayAIAnalysis] =
+  useState<any>(null);
+
+const [replayPassedConfirmations, setReplayPassedConfirmations] =
+  useState(0);
+
+const [qualifiedReplaySignal, setQualifiedReplaySignal] =
+  useState<any>(null);
+
+useEffect(() => {
+
+  if (
+    executionMode !== "REPLAY" ||
+    !replayLoaded ||
+    historicalReplay5m.length === 0 ||
+    historicalReplay1m.length === 0 ||
+    historicalReplayWarmup5m.length === 0 ||
+    historicalReplayWarmup1m.length === 0 ||
+    !replayCurrentCandle
+  ) {
+    return;
+  }
+
+  // ======================================
+  // FRIDAY 5m DATA UP TO CURRENT REPLAY STEP
+  // ======================================
+
+  const friday5mSoFar =
+    historicalReplay5m.slice(
+      0,
+      replayState.currentIndex + 1
+    );
+
+  // ======================================
+  // CURRENT REPLAY TIME
+  // ======================================
+
+  const replayTime =
+    new Date(
+      replayCurrentCandle.time
+    ).getTime();
+
+  // ======================================
+  // FRIDAY 1m DATA UP TO CURRENT REPLAY TIME
+  // ======================================
+
+  const friday1mSoFar =
+    historicalReplay1m.filter(
+      (candle) =>
+        new Date(
+          candle.time
+        ).getTime() <= replayTime
+    );
+
+  // ======================================
+  // ADD THURSDAY WARM-UP HISTORY
+  // ======================================
+
+  const full5mHistory = [
+    ...historicalReplayWarmup5m,
+    ...friday5mSoFar,
+  ];
+
+  const full1mHistory = [
+    ...historicalReplayWarmup1m,
+    ...friday1mSoFar,
+  ];
+
+  const currentReplayPrice =
+    replayCurrentCandle.close;
+
+  // ======================================
+  // RUN SAME REAL ANALYZERS
+  // ======================================
+
+  const result5m =
+    analyzeRealTimeframe(
+      full5mHistory,
+      currentReplayPrice
+    );
+
+  const result1m =
+    analyzeRealTimeframe(
+      full1mHistory,
+      currentReplayPrice
+    );
+
+  setReplayAnalysis5m(
+    result5m
+  );
+
+  setReplayAnalysis1m(
+    result1m
+  );
+
+  if (
+    result5m &&
+    result1m
+  ) {
+
+    const mtf =
+      analyzeMultiTimeframe(
+        result5m,
+        result1m
+      );
+
+    setReplayMultiTimeframe(
+      mtf
+    );
+
+  } else {
+
+    setReplayMultiTimeframe(
+      null
+    );
+  }
+
+}, [
+  executionMode,
+  replayLoaded,
+  replayState.currentIndex,
+  replayCurrentCandle,
+  historicalReplay5m,
+  historicalReplay1m,
+  historicalReplayWarmup5m,
+  historicalReplayWarmup1m,
+]);
+
+useEffect(() => {
+
+  if (
+    executionMode !== "REPLAY" ||
+    !replayAnalysis5m ||
+    !replayAnalysis1m ||
+    !replayMultiTimeframe ||
+    !replayCurrentCandle
+  ) {
+    return;
+  }
+
+  // ======================================
+  // RUN V1 USING REPLAY 5m ANALYSIS
+  // ======================================
+
+  const replayV1 =
+    analyzeMarketV1({
+
+      price:
+        replayCurrentCandle.close,
+
+      previousPrice:
+        replayCurrentCandle.open,
+
+      trend:
+        replayAnalysis5m.trend,
+
+      rsi:
+        replayAnalysis5m.rsi,
+
+      ema20:
+        replayAnalysis5m.ema20,
+
+      ema50:
+        replayAnalysis5m.ema50,
+
+      macd:
+        replayAnalysis5m.macd,
+
+      pattern:
+        replayAnalysis5m.pattern,
+
+      support:
+        replayAnalysis5m.support,
+
+      resistance:
+        replayAnalysis5m.resistance,
+
+      marketStructure:
+        replayAnalysis5m.marketStructure,
+
+      breakout:
+        replayAnalysis5m.breakout,
+
+      volumeStrength:
+        "NORMAL",
+    });
+
+
+  setReplayAIAnalysis(
+    replayV1
+  );
+
+
+  // ======================================
+  // REPLAY CONFIRMATIONS
+  // ======================================
+
+  const isBuyCandidate =
+    replayV1.action === "BUY";
+
+  const isSellCandidate =
+    replayV1.action === "SELL";
+
+
+  const replayConfirmationChecks = [
+
+    // 1. Trend
+    isBuyCandidate
+      ? replayAnalysis5m.trend === "Bullish"
+      : isSellCandidate
+      ? replayAnalysis5m.trend === "Bearish"
+      : false,
+
+    // 2. Pattern
+    isBuyCandidate
+      ? (
+          replayAnalysis5m.pattern ===
+            "Bullish Engulfing" ||
+          replayAnalysis5m.pattern ===
+            "Hammer"
+        )
+      : isSellCandidate
+      ? replayAnalysis5m.pattern ===
+          "Bearish Engulfing"
+      : false,
+
+    // 3. Structure
+    isBuyCandidate
+      ? replayAnalysis5m.marketStructure ===
+          "UPTREND"
+      : isSellCandidate
+      ? replayAnalysis5m.marketStructure ===
+          "DOWNTREND"
+      : false,
+
+    // 4. Breakout
+    isBuyCandidate
+      ? replayAnalysis5m.breakout ===
+          "BREAKOUT"
+      : isSellCandidate
+      ? replayAnalysis5m.breakout ===
+          "BREAKDOWN"
+      : false,
+
+    // 5. Volume
+    false,
+
+    // 6. Confidence
+    replayV1.confidence >= 90,
+  ];
+
+
+  const confirmations =
+    replayConfirmationChecks.filter(
+      Boolean
+    ).length;
+
+
+  setReplayPassedConfirmations(
+    confirmations
+  );
+
+
+  // ======================================
+  // REPLAY QUALIFICATION
+  // ======================================
+
+  const directionMatches =
+    (
+      replayV1.action === "BUY" ||
+      replayV1.action === "SELL"
+    ) &&
+    replayV1.action ===
+      replayMultiTimeframe.direction;
+
+
+  const entryReady =
+    replayMultiTimeframe.entryState ===
+      "READY";
+
+
+  const confidenceReady =
+    replayV1.confidence >= 90;
+
+
+  const confirmationsReady =
+    confirmations >= 4;
+
+
+  const qualified =
+    directionMatches &&
+    entryReady &&
+    confidenceReady &&
+    confirmationsReady;
+
+
+  setQualifiedReplaySignal({
+
+    replayIndex:
+  replayState.currentIndex,
+
+    action:
+      qualified
+        ? replayV1.action
+        : "WAIT",
+
+    qualified,
+
+    confidence:
+      replayV1.confidence,
+
+    confirmations,
+
+    v1Direction:
+      replayV1.action,
+
+    mtfDirection:
+      replayMultiTimeframe.direction,
+
+    entryState:
+      replayMultiTimeframe.entryState,
+
+    reason:
+      qualified
+        ? "Replay V1 and multi-timeframe entry conditions are aligned."
+        : !directionMatches
+        ? "Replay V1 and multi-timeframe directions are not aligned."
+        : !entryReady
+        ? "Replay multi-timeframe entry is not ready."
+        : !confidenceReady
+        ? "Replay V1 confidence is below 90%."
+        : !confirmationsReady
+        ? "Replay confirmations are below 4 of 6."
+        : "Replay signal is not qualified.",
+  });
+
+}, [
+  executionMode,
+  replayAnalysis5m,
+  replayAnalysis1m,
+  replayMultiTimeframe,
+  replayCurrentCandle,
+  replayState.currentIndex,
+]);
+
+
+// ======================================
+// LOAD HISTORICAL REPLAY
+// ======================================
+
+const loadHistoricalReplay = async () => {
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/replay-data",
+        {
+          cache: "no-store",
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (
+      !data.success ||
+      !Array.isArray(data.candles5m) ||
+      !Array.isArray(data.candles1m)
+    ) {
+
+      console.error(
+        "❌ REPLAY DATA INVALID",
+        data
+      );
+
+      return;
+    }
+
+    setHistoricalReplay5m(
+      data.candles5m
+    );
+
+    setHistoricalReplay1m(
+      data.candles1m
+    );
+
+    setHistoricalReplayWarmup5m(
+  data.warmup5m
+);
+
+setHistoricalReplayWarmup1m(
+  data.warmup1m
+);
+
+    setReplayState(
+      createReplayState(
+        data.candles5m
+      )
+    );
+
+    setReplayLoaded(true);
+
+    console.log(
+      "✅ REPLAY DATA LOADED",
+      {
+        candles5m:
+          data.candles5m.length,
+
+        candles1m:
+          data.candles1m.length,
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      "❌ REPLAY LOAD ERROR",
+      error
+    );
+  }
+};
+
+
+// ======================================
+// MOVE REPLAY ONE CANDLE FORWARD
+// ======================================
+
+const handleReplayNext = () => {
+
+  if (!replayLoaded) {
+    return;
+  }
+
+  setReplayState(prev =>
+    stepReplay(prev)
+  );
+};
+
+useEffect(() => {
+
+  if (
+    executionMode !== "REPLAY" ||
+    !replayRunning ||
+    !replayLoaded
+  ) {
+    return;
+  }
+
+  const timer = setInterval(() => {
+
+    setReplayState(prev => {
+
+      const next =
+        stepReplay(prev);
+
+      if (next.completed) {
+        setReplayRunning(false);
+      }
+
+      return next;
+    });
+
+  }, 800);
+
+  return () =>
+    clearInterval(timer);
+
+}, [
+  executionMode,
+  replayRunning,
+  replayLoaded,
+]);
 
 useEffect(() => {
 
@@ -374,6 +921,29 @@ const stableSignalCountRef =
 const realStableSignalCountRef =
   useRef(0);
 
+// ======================================
+// REPLAY SIGNAL STABILITY
+// ======================================
+
+const replayStableSignalDirectionRef =
+  useRef<"BUY" | "SELL" | null>(null);
+
+const replayStableSignalCountRef =
+  useRef(0);
+  
+  const replayLastProcessedIndexRef =
+  useRef<number | null>(null);
+
+  const replayQualifiedHistoryRef =
+  useRef<
+    {
+      candle: number;
+      action: "BUY" | "SELL";
+      confidence: number;
+      confirmations: number;
+    }[]
+  >([]);
+
 // ------------------------------
 
 const [patternHistory, setPatternHistory] =
@@ -591,7 +1161,7 @@ useEffect(() => {
   }
 
   const result =
-    analyzeRealTimeframe(
+    analyzeRealTimeframe( 
       realNiftyCandles1m,
       realMarketData.nifty.price
     );
@@ -941,174 +1511,359 @@ if (data.success) {
 
 }, [tradeAlert]);
 
+// ======================================
+// REPLAY SIGNAL STABILITY + EXECUTION
+// ======================================
+
+useEffect(() => {
+
+  if (
+    executionMode !== "REPLAY" ||
+    !qualifiedReplaySignal ||
+    !replayAIAnalysis ||
+    !replayCurrentCandle
+  ) {
+    return;
+  }
+
+  // --------------------------------------
+  // IMPORTANT:
+  // Wait until qualification belongs to
+  // the CURRENT replay candle.
+  //
+  // Do NOT reset stability while React is
+  // still updating from the previous candle.
+  // --------------------------------------
+
+  const qualificationIsCurrent =
+    qualifiedReplaySignal.replayIndex ===
+    replayState.currentIndex;
+
+  if (!qualificationIsCurrent) {
+    return;
+  }
+
+  // --------------------------------------
+  // Process each replay candle only once
+  // --------------------------------------
+
+  if (
+    replayLastProcessedIndexRef.current ===
+    replayState.currentIndex
+  ) {
+    return;
+  }
+
+  replayLastProcessedIndexRef.current =
+    replayState.currentIndex;
+
+
+  const replaySignalEngineAvailable =
+    !signalLocked &&
+    !tradeCooldown &&
+    !currentSignal &&
+    !activeTrade;
+
+
+  const replayQualified =
+    qualifiedReplaySignal.qualified === true &&
+    (
+      qualifiedReplaySignal.action === "BUY" ||
+      qualifiedReplaySignal.action === "SELL"
+    );
+
+
+  // --------------------------------------
+  // Current completed candle is NOT
+  // qualified -> reset stability.
+  // --------------------------------------
+
+  if (!replayQualified) {
+
+    replayStableSignalDirectionRef.current =
+      null;
+
+    replayStableSignalCountRef.current = 0;
+
+    console.log(
+      "⏪ REPLAY STABILITY RESET:",
+      {
+        candle:
+          replayState.currentIndex + 1,
+
+        action:
+          qualifiedReplaySignal.action,
+
+        qualified:
+          qualifiedReplaySignal.qualified,
+      }
+    );
+
+    return;
+  }
+
+
+  // --------------------------------------
+  // A trade/signal already owns execution
+  // --------------------------------------
+
+  if (!replaySignalEngineAvailable) {
+    return;
+  }
+
+
+  const direction =
+    qualifiedReplaySignal.action as
+      | "BUY"
+      | "SELL";
+replayQualifiedHistoryRef.current.push({
+  candle:
+    replayState.currentIndex + 1,
+
+  action:
+    direction,
+
+  confidence:
+    replayAIAnalysis.confidence,
+
+  confirmations:
+    replayPassedConfirmations,
+});
+
+console.log(
+  "📋 REPLAY QUALIFIED HISTORY:",
+  replayQualifiedHistoryRef.current
+);
+
+  // --------------------------------------
+  // Consecutive direction stability
+  // --------------------------------------
+
+  if (
+    replayStableSignalDirectionRef.current ===
+    direction
+  ) {
+
+    replayStableSignalCountRef.current += 1;
+
+  } else {
+
+    replayStableSignalDirectionRef.current =
+      direction;
+
+    replayStableSignalCountRef.current = 1;
+  }
+
+
+  console.log(
+    "⏪ REPLAY SIGNAL STABILITY CHECK:",
+    {
+      candle:
+        replayState.currentIndex + 1,
+
+      direction,
+
+      stability:
+        replayStableSignalCountRef.current,
+
+      required: 2,
+
+      confidence:
+        replayAIAnalysis.confidence,
+
+      confirmations:
+        replayPassedConfirmations,
+    }
+  );
+
+
+  // ======================================
+  // STABLE REPLAY SIGNAL CONFIRMED
+  // ======================================
+
+  if (
+    replayStableSignalCountRef.current >= 2
+  ) {
+
+    console.log(
+      "✅ REPLAY STABLE SIGNAL CONFIRMED:",
+      {
+        candle:
+          replayState.currentIndex + 1,
+
+        action:
+          replayAIAnalysis.action,
+
+        price:
+          replayCurrentCandle.close,
+
+        confidence:
+          replayAIAnalysis.confidence,
+
+        confirmations:
+          replayPassedConfirmations,
+      }
+    );
+
+
+    processTradeEngine(
+      replayAIAnalysis,
+      replayCurrentCandle.close,
+      replayPassedConfirmations,
+      "REPLAY"
+    );
+
+
+    replayStableSignalDirectionRef.current =
+      null;
+
+    replayStableSignalCountRef.current = 0;
+  }
+
+}, [
+  executionMode,
+  qualifiedReplaySignal,
+  replayAIAnalysis,
+  replayCurrentCandle,
+  replayPassedConfirmations,
+  signalLocked,
+  tradeCooldown,
+  currentSignal,
+  activeTrade,
+  replayState.currentIndex,
+]);
+
+// ======================================
+// TAKE TRADE
+// ======================================
+
 const handleTakeTrade = () => {
 
   if (!currentSignal) return;
 
 
   // ======================================
-  // SOURCE-AWARE PRE-ENTRY VALIDATION
+  // CENTRAL EXECUTION VALIDATION
   // ======================================
 
-  if (currentSignal.source === "REAL") {
+  const signalSource =
+    currentSignal.source ?? "SIMULATOR";
 
-    // --------------------------------------
-    // REAL MARKET VALIDATION
-    // --------------------------------------
+  const currentExecutionPrice =
+    signalSource === "REAL"
+      ? realMarketData?.nifty?.price
+      : nifty.price;
 
-    const realSignalStillQualified =
-      qualifiedRealSignal?.qualified === true;
+  if (currentExecutionPrice == null) {
 
-    const realDirectionStillMatches =
-      qualifiedRealSignal?.action ===
-        currentSignal.action &&
-      realAIAnalysis?.action ===
-        currentSignal.action &&
-      multiTimeframeAnalysis?.direction ===
-        currentSignal.action;
+    setTradeAlert({
+      type: "WARNING",
+      title: "Trade Blocked",
+      message:
+        "Current market price is not available.",
+    });
 
-    const realEntryStillReady =
-      multiTimeframeAnalysis?.entryState ===
-        "READY";
-
-    if (
-      !realSignalStillQualified ||
-      !realDirectionStillMatches ||
-      !realEntryStillReady
-    ) {
-
-      console.log(
-        "⛔ REAL TAKE TRADE BLOCKED",
-        {
-          lockedAction:
-            currentSignal.action,
-
-          realV1Action:
-            realAIAnalysis?.action,
-
-          qualifiedAction:
-            qualifiedRealSignal?.action,
-
-          qualified:
-            qualifiedRealSignal?.qualified,
-
-          mtfDirection:
-            multiTimeframeAnalysis?.direction,
-
-          mtfEntryState:
-            multiTimeframeAnalysis?.entryState,
-
-          reason:
-            qualifiedRealSignal?.reason,
-        }
-      );
-
-      setTradeAlert({
-        type: "WARNING",
-        title: "Trade Blocked",
-        message:
-          `Locked ${currentSignal.action} signal is no longer qualified by the real market.`,
-      });
-
-      return;
-    }
-
-    console.log(
-      "✅ REAL PRE-ENTRY VALIDATION PASSED",
-      {
-        lockedAction:
-          currentSignal.action,
-
-        realV1Action:
-          realAIAnalysis?.action,
-
-        qualifiedAction:
-          qualifiedRealSignal?.action,
-
-        mtfDirection:
-          multiTimeframeAnalysis?.direction,
-
-        mtfEntryState:
-          multiTimeframeAnalysis?.entryState,
-      }
-    );
-
-  } else {
-
-    // --------------------------------------
-    // SIMULATOR VALIDATION
-    // --------------------------------------
-
-    const liveDirectionOpposite =
-      (
-        currentSignal.action === "BUY" &&
-        aiSignal.action === "SELL"
-      ) ||
-      (
-        currentSignal.action === "SELL" &&
-        aiSignal.action === "BUY"
-      );
-
-    const liveMarketUnsafe =
-      aiSignal.riskLevel === "High" ||
-      aiSignal.marketCondition ===
-        "Sideways Market" ||
-      aiSignal.advice ===
-        "Wait for a clearer setup";
-
-    if (
-      liveDirectionOpposite ||
-      liveMarketUnsafe
-    ) {
-
-      console.log(
-        "⛔ SIMULATOR TAKE TRADE BLOCKED",
-        {
-          lockedAction:
-            currentSignal.action,
-
-          liveAction:
-            aiSignal.action,
-
-          liveConfidence:
-            aiSignal.confidence,
-
-          liveRisk:
-            aiSignal.riskLevel,
-
-          liveMarketCondition:
-            aiSignal.marketCondition,
-
-          liveAdvice:
-            aiSignal.advice,
-        }
-      );
-
-      setTradeAlert({
-        type: "WARNING",
-        title: "Trade Blocked",
-        message:
-          `Locked ${currentSignal.action} simulator signal is no longer confirmed.`,
-      });
-
-      return;
-    }
-
-    console.log(
-      "✅ SIMULATOR PRE-ENTRY VALIDATION PASSED",
-      {
-        lockedAction:
-          currentSignal.action,
-
-        liveAction:
-          aiSignal.action,
-
-        liveConfidence:
-          aiSignal.confidence,
-      }
-    );
+    return;
   }
 
+  const validation =
+    validateExecution({
+
+      source: signalSource,
+
+      lockedAction:
+        currentSignal.action,
+
+      lockedEntry:
+        currentSignal.entry,
+
+      currentPrice:
+        currentExecutionPrice,
+
+      // REAL
+      realQualified:
+        qualifiedRealSignal?.qualified,
+
+      realQualifiedAction:
+        qualifiedRealSignal?.action,
+
+      realV1Action:
+        realAIAnalysis?.action,
+
+      mtfDirection:
+        multiTimeframeAnalysis?.direction,
+
+      mtfEntryState:
+        multiTimeframeAnalysis?.entryState,
+
+      // SIMULATOR
+      simulatorAction:
+  aiSignal.action as
+    | "BUY"
+    | "SELL"
+    | "WAIT"
+    | "WATCH",
+
+      simulatorRiskLevel:
+        aiSignal.riskLevel,
+
+      simulatorMarketCondition:
+        aiSignal.marketCondition,
+
+      simulatorAdvice:
+        aiSignal.advice,
+    });
+
+
+  if (!validation.allowed) {
+
+    console.log(
+      "⛔ TAKE TRADE BLOCKED",
+      {
+        source:
+          signalSource,
+
+        action:
+          currentSignal.action,
+
+        entry:
+          currentSignal.entry,
+
+        currentPrice:
+          currentExecutionPrice,
+
+        reason:
+          validation.reason,
+      }
+    );
+
+    setTradeAlert({
+      type: "WARNING",
+      title: "Trade Blocked",
+      message:
+        validation.reason,
+    });
+
+    return;
+  }
+
+
+  console.log(
+    "✅ EXECUTION VALIDATION PASSED",
+    {
+      source:
+        signalSource,
+
+      action:
+        currentSignal.action,
+
+      entry:
+        currentSignal.entry,
+
+      currentPrice:
+        currentExecutionPrice,
+    }
+  );
 
   // ======================================
   // CREATE + ACTIVATE TRADE
@@ -1173,7 +1928,10 @@ function processTradeEngine(
   analysis: any,
   price: number,
   confirmations: number,
-  source: "SIMULATOR" | "REAL"
+  source:
+  | "SIMULATOR"
+  | "REAL"
+  | "REPLAY"
 ) {
 
   console.log("========== TRADE ENGINE CHECK ==========");
@@ -1823,6 +2581,8 @@ if (executionMode === "SIMULATOR") {
 const activeTradePrice =
   activeTrade?.source === "REAL"
     ? realMarketData?.nifty?.price
+    : activeTrade?.source === "REPLAY"
+    ? replayCurrentCandle?.close
     : newNifty.price;
 
 if (
@@ -2596,6 +3356,28 @@ if (detectedPattern !== "No Pattern") {
         SIMULATOR
       </button>
 
+      <button
+        type="button"
+        onClick={() =>
+          setExecutionMode("REPLAY")
+        }
+        disabled={
+          !!currentSignal ||
+          !!activeTrade
+        }
+        className={`px-4 py-2 rounded-md text-sm font-semibold border ${
+          executionMode === "REPLAY"
+            ? "bg-purple-700 border-purple-500 text-white"
+            : "bg-gray-800 border-gray-700 text-gray-300"
+        } ${
+          currentSignal || activeTrade
+            ? "opacity-50 cursor-not-allowed"
+            : ""
+        }`}
+      >
+        REPLAY
+      </button>
+
     </div>
 
   </div>
@@ -2617,6 +3399,314 @@ if (detectedPattern !== "No Pattern") {
   </div>
 
 </div>
+
+{/* ================= REPLAY CONTROLS ================= */}
+
+{executionMode === "REPLAY" && (
+  <div className="mt-4 p-3 border border-gray-800 rounded-lg bg-gray-900">
+
+    <div className="font-semibold mb-3">
+      Replay Test
+    </div>
+
+<div className="flex gap-2 mb-3">
+
+  <button
+    type="button"
+    onClick={loadHistoricalReplay}
+    className="px-4 py-2 rounded-md border border-gray-700 bg-gray-800"
+  >
+    Load Friday Data
+  </button>
+
+  <button
+    type="button"
+    onClick={() =>
+      setReplayRunning(true)
+    }
+    disabled={
+      !replayLoaded ||
+      replayRunning
+    }
+    className={`px-4 py-2 rounded-md border border-gray-700 bg-gray-800 ${
+      !replayLoaded || replayRunning
+        ? "opacity-50 cursor-not-allowed"
+        : ""
+    }`}
+  >
+    Run Replay
+  </button>
+
+  <button
+    type="button"
+    onClick={() =>
+      setReplayRunning(false)
+    }
+    disabled={!replayRunning}
+    className={`px-4 py-2 rounded-md border border-gray-700 bg-gray-800 ${
+      !replayRunning
+        ? "opacity-50 cursor-not-allowed"
+        : ""
+    }`}
+  >
+    Pause
+  </button>
+
+  <button
+    type="button"
+    onClick={handleReplayNext}
+    disabled={
+      !replayLoaded ||
+      replayRunning
+    }
+    className={`px-4 py-2 rounded-md border border-gray-700 bg-gray-800 ${
+      !replayLoaded || replayRunning
+        ? "opacity-50 cursor-not-allowed"
+        : ""
+    }`}
+  >
+    Next Candle
+  </button>
+
+  <button
+    type="button"
+
+onClick={() => {
+
+  setReplayRunning(false);
+
+  setReplayState(prev =>
+    resetReplay(prev)
+  );
+
+  // Clear Replay stability
+  replayStableSignalDirectionRef.current =
+    null;
+
+  replayStableSignalCountRef.current = 0;
+
+  replayLastProcessedIndexRef.current =
+    null;
+
+  replayQualifiedHistoryRef.current = [];
+
+  // Clear shared signal state
+  setCurrentSignal(null);
+
+  setSignalLocked(false);
+
+  setSignalCreatedAt(null);
+
+  setSignalTimeLeft(0);
+
+  setSignalExpiry(null);
+
+  setLastSignal("NONE");
+
+  // Clear trade/cooldown state
+  setActiveTrade(null);
+
+  setTradeCooldown(false);
+
+  console.log(
+    "♻️ REPLAY FULL RESET COMPLETE"
+  );
+}}
+
+    disabled={!replayLoaded}
+    className={`px-4 py-2 rounded-md border border-gray-700 bg-gray-800 ${
+      !replayLoaded
+        ? "opacity-50 cursor-not-allowed"
+        : ""
+    }`}
+  >
+    Reset
+  </button>
+
+</div>
+
+    <div>
+      Candle:{" "}
+      <strong>
+        {replayState.currentIndex + 1}
+        {" / "}
+        {replayState.candles.length}
+      </strong>
+    </div>
+
+    <div>
+      Progress:{" "}
+      <strong>
+        {replayProgress.toFixed(2)}%
+      </strong>
+    </div>
+
+    <div>
+      Replay Price:{" "}
+      <strong>
+        {replayCurrentCandle
+          ? replayCurrentCandle.close.toFixed(2)
+          : "--"}
+      </strong>
+    </div>
+
+    <div>
+      Candles Loaded:{" "}
+      <strong>
+        {replayCandlesSoFar.length}
+      </strong>
+    </div>
+<div className="mt-3 pt-3 border-t border-gray-800">
+
+  <div>
+    Replay 5m Trend:{" "}
+    <strong>
+      {replayAnalysis5m?.trend ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay 5m RSI:{" "}
+    <strong>
+      {replayAnalysis5m?.rsi ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay 5m Structure:{" "}
+    <strong>
+      {replayAnalysis5m?.marketStructure ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay 5m Breakout:{" "}
+    <strong>
+      {replayAnalysis5m?.breakout ?? "--"}
+    </strong>
+  </div>
+
+  <div className="mt-2">
+    Replay 1m Trend:{" "}
+    <strong>
+      {replayAnalysis1m?.trend ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay 1m RSI:{" "}
+    <strong>
+      {replayAnalysis1m?.rsi ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay 1m Structure:{" "}
+    <strong>
+      {replayAnalysis1m?.marketStructure ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay 1m Breakout:{" "}
+    <strong>
+      {replayAnalysis1m?.breakout ?? "--"}
+    </strong>
+  </div>
+
+  <div className="mt-2">
+    Replay MTF Direction:{" "}
+    <strong>
+      {replayMultiTimeframe?.direction ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay MTF Entry State:{" "}
+    <strong>
+      {replayMultiTimeframe?.entryState ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay MTF Reason:{" "}
+    <strong>
+      {replayMultiTimeframe?.reasons?.[0] ?? "--"}
+    </strong>
+  </div>
+
+<div className="mt-3 pt-3 border-t border-gray-800">
+
+  <div>
+    Replay V1 Action:{" "}
+    <strong>
+      {replayAIAnalysis?.action ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay V1 Confidence:{" "}
+    <strong>
+      {replayAIAnalysis?.confidence ?? "--"}%
+    </strong>
+  </div>
+
+  <div>
+    Replay Confirmations:{" "}
+    <strong>
+      {replayPassedConfirmations} / 6
+    </strong>
+  </div>
+
+  <div>
+    Replay V1 Market:{" "}
+    <strong>
+      {replayAIAnalysis?.marketCondition ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay V1 Risk:{" "}
+    <strong>
+      {replayAIAnalysis?.riskLevel ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Replay Trade Quality:{" "}
+    <strong>
+      {replayAIAnalysis?.tradeQuality ?? "--"}
+    </strong>
+  </div>
+
+  <div className="mt-2">
+    Qualified Replay Signal:{" "}
+    <strong>
+      {qualifiedReplaySignal?.action ?? "--"}
+    </strong>
+  </div>
+
+  <div>
+    Qualified:{" "}
+    <strong>
+      {qualifiedReplaySignal?.qualified
+        ? "YES"
+        : "NO"}
+    </strong>
+  </div>
+
+  <div>
+    Qualification Reason:{" "}
+    <strong>
+      {qualifiedReplaySignal?.reason ?? "--"}
+    </strong>
+  </div>
+
+</div>
+
+</div>
+  </div>
+)}
 
 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
 
