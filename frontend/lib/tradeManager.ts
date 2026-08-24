@@ -174,8 +174,10 @@ if (!target1Hit) {
     // +25 points → lock +15
     if (favorableMove >= 25) {
 
-      const protectedSL =
-        trade.entry + 15;
+const protectedSL =
+  Number(
+    (trade.entry + 15).toFixed(2)
+  );
 
       if (protectedSL > stopLoss) {
 
@@ -194,8 +196,10 @@ if (!target1Hit) {
     // +15 points → lock +5
     } else if (favorableMove >= 15) {
 
-      const protectedSL =
-        trade.entry + 5;
+const protectedSL =
+  Number(
+    (trade.entry + 5).toFixed(2)
+  );
 
       if (protectedSL > stopLoss) {
 
@@ -214,8 +218,10 @@ if (!target1Hit) {
     // +8 points → move to breakeven
     } else if (favorableMove >= 8) {
 
-      const protectedSL =
-        trade.entry;
+const protectedSL =
+  Number(
+    trade.entry.toFixed(2)
+  );
 
       if (protectedSL > stopLoss) {
 
@@ -240,8 +246,10 @@ if (!target1Hit) {
     // +25 points → lock +15
     if (favorableMove >= 25) {
 
-      const protectedSL =
-        trade.entry - 15;
+const protectedSL =
+  Number(
+    (trade.entry - 15).toFixed(2)
+  );
 
       if (protectedSL < stopLoss) {
 
@@ -260,9 +268,11 @@ if (!target1Hit) {
     // +15 points → lock +5
     } else if (favorableMove >= 15) {
 
-      const protectedSL =
-        trade.entry - 5;
-
+const protectedSL =
+  Number(
+    (trade.entry - 5).toFixed(2)
+  );
+  
       if (protectedSL < stopLoss) {
 
         stopLoss = Number(
@@ -277,26 +287,27 @@ if (!target1Hit) {
         );
       }
 
-    // +8 points → breakeven
-    } else if (favorableMove >= 8) {
+// +8 points → breakeven
+} else if (favorableMove >= 8) {
 
-      const protectedSL =
-        trade.entry;
+  const protectedSL =
+    Number(
+      trade.entry.toFixed(2)
+    );
 
-      if (protectedSL < stopLoss) {
+  if (protectedSL < stopLoss) {
 
-        stopLoss = Number(
-          protectedSL.toFixed(2)
-        );
+    stopLoss =
+      protectedSL;
 
-        events = addEvent(
-          events,
-          "PROFIT_PROTECTION_ENABLED",
-          stopLoss,
-          "Trade protected at break even after +8 point favorable move"
-        );
-      }
-    }
+    events = addEvent(
+      events,
+      "PROFIT_PROTECTION_ENABLED",
+      stopLoss,
+      "Trade protected at break even after +8 point favorable move"
+    );
+  }
+}
   }
 }
 
@@ -541,28 +552,31 @@ const hitStopLoss =
 if (hitStopLoss && status !== "CLOSED") {
 
   // Calculate final realized profit
-  if (partialProfitBooked) {
+if (partialProfitBooked) {
 
-const remainingProfit =
-  trade.action === "BUY"
-    ? stopExecutionPrice - trade.entry
-    : trade.entry - stopExecutionPrice;
+  const remainingProfit =
+    trade.action === "BUY"
+      ? stopExecutionPrice - trade.entry
+      : trade.entry - stopExecutionPrice;
 
-    realizedPnL = Number(
-      (
-        realizedPnL +
-        remainingProfit * 0.5
-      ).toFixed(2)
-    );
+  realizedPnL = Number(
+    (
+      realizedPnL +
+      remainingProfit * 0.5
+    ).toFixed(2)
+  );
 
-  } else {
+} else {
 
-  realizedPnL =
-  trade.action === "BUY"
-    ? stopExecutionPrice - trade.entry
-    : trade.entry - stopExecutionPrice;
+  realizedPnL = Number(
+    (
+      trade.action === "BUY"
+        ? stopExecutionPrice - trade.entry
+        : trade.entry - stopExecutionPrice
+    ).toFixed(2)
+  );
 
-  }
+}
 
 result =
   realizedPnL > 0
@@ -577,10 +591,15 @@ result =
   closedAt = new Date();
 status = "CLOSED";
 
-  const profitProtected =
+const roundedEntry =
+  Number(
+    trade.entry.toFixed(2)
+  );
+
+const profitProtected =
   trade.action === "BUY"
-    ? stopLoss >= trade.entry
-    : stopLoss <= trade.entry;
+    ? stopLoss >= roundedEntry
+    : stopLoss <= roundedEntry;
 
   console.log("🧪 CLOSE CLASSIFICATION:", {
   action: trade.action,

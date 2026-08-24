@@ -72,6 +72,20 @@ import {
 } from "../lib/indicators";
 import { calculateSupportResistance }
   from "../lib/supportResistance";
+  import {
+  analyzeReplayOpportunities,
+} from "../lib/replayDiagnostics";
+import {
+  analyzeReplayCandle,
+} from "../lib/replayAnalyzer";
+import {
+  scanReplayDay,
+  scanReplayDayExecutable,
+  findReplayRunnerCandidates,
+  findReplayRunnerExitCandidates,
+  findOpenReplayRunnerCandidates,
+  summarizeReplayCandidates,
+} from "../lib/replayMultiDayScanner";
 import type { TradeSignal } from "../types/tradeSignal";
 
 
@@ -156,6 +170,27 @@ const [replayLoaded, setReplayLoaded] =
   const [replayRunning, setReplayRunning] =
   useState(false);
 
+// ==========================================
+// SERVER HISTORICAL BACKTEST
+// ==========================================
+
+const [historicalScanRunning, setHistoricalScanRunning] =
+  useState(false);
+
+const [historicalScanResult, setHistoricalScanResult] =
+  useState<any>(null);
+
+const [historicalScanError, setHistoricalScanError] =
+  useState<string | null>(null);
+
+  const [
+  replayExecutionTest,
+  setReplayExecutionTest
+] = useState(false);
+
+const [replayDate, setReplayDate] =
+  useState("2026-08-21");
+
   const [replayAnalysis5m, setReplayAnalysis5m] =
   useState<any>(null);
 
@@ -174,6 +209,19 @@ const [replayPassedConfirmations, setReplayPassedConfirmations] =
 const [qualifiedReplaySignal, setQualifiedReplaySignal] =
   useState<any>(null);
 
+// ======================================
+// SYNCHRONIZED REPLAY ANALYSIS
+//
+// One Replay candle
+// → 5m + 1m
+// → MTF
+// → V1
+// → confirmations
+// → qualification
+//
+// All derived from the SAME candle.
+// ======================================
+
 useEffect(() => {
 
   if (
@@ -188,99 +236,139 @@ useEffect(() => {
     return;
   }
 
-  // ======================================
-  // FRIDAY 5m DATA UP TO CURRENT REPLAY STEP
-  // ======================================
 
-  const friday5mSoFar =
-    historicalReplay5m.slice(
-      0,
-      replayState.currentIndex + 1
-    );
+  const result =
+    analyzeReplayCandle({
 
-  // ======================================
-  // CURRENT REPLAY TIME
-  // ======================================
+      currentIndex:
+        replayState.currentIndex,
 
-  const replayTime =
-    new Date(
-      replayCurrentCandle.time
-    ).getTime();
+      warmup5m:
+        historicalReplayWarmup5m,
 
-  // ======================================
-  // FRIDAY 1m DATA UP TO CURRENT REPLAY TIME
-  // ======================================
+      warmup1m:
+        historicalReplayWarmup1m,
 
-  const friday1mSoFar =
-    historicalReplay1m.filter(
-      (candle) =>
-        new Date(
-          candle.time
-        ).getTime() <= replayTime
-    );
+      candles5m:
+        historicalReplay5m,
 
-  // ======================================
-  // ADD THURSDAY WARM-UP HISTORY
-  // ======================================
+      candles1m:
+        historicalReplay1m,
+    });
 
-  const full5mHistory = [
-    ...historicalReplayWarmup5m,
-    ...friday5mSoFar,
-  ];
 
-  const full1mHistory = [
-    ...historicalReplayWarmup1m,
-    ...friday1mSoFar,
-  ];
+  if (!result) {
 
-  const currentReplayPrice =
-    replayCurrentCandle.close;
+    setReplayAnalysis5m(null);
 
-  // ======================================
-  // RUN SAME REAL ANALYZERS
-  // ======================================
+    setReplayAnalysis1m(null);
 
-  const result5m =
-    analyzeRealTimeframe(
-      full5mHistory,
-      currentReplayPrice
-    );
+    setReplayMultiTimeframe(null);
 
-  const result1m =
-    analyzeRealTimeframe(
-      full1mHistory,
-      currentReplayPrice
-    );
+    setReplayAIAnalysis(null);
+
+    setReplayPassedConfirmations(0);
+
+    setQualifiedReplaySignal(null);
+
+    return;
+  }
+
+
+  // --------------------------------------
+  // Store display / diagnostic state
+  // from the SAME synchronous result
+  // --------------------------------------
 
   setReplayAnalysis5m(
-    result5m
+    result.analysis5m
   );
 
   setReplayAnalysis1m(
-    result1m
+    result.analysis1m
   );
 
-  if (
-    result5m &&
-    result1m
-  ) {
+  setReplayMultiTimeframe(
+    result.multiTimeframe
+  );
 
-    const mtf =
-      analyzeMultiTimeframe(
-        result5m,
-        result1m
-      );
+  setReplayAIAnalysis(
+    result.replayV1
+  );
 
-    setReplayMultiTimeframe(
-      mtf
-    );
+  setReplayPassedConfirmations(
+    result.confirmations
+  );
 
-  } else {
 
-    setReplayMultiTimeframe(
-      null
-    );
-  }
+  // --------------------------------------
+  // Qualification reason
+  // --------------------------------------
+
+  const directionMatches =
+    (
+      result.v1Direction === "BUY" ||
+      result.v1Direction === "SELL"
+    ) &&
+    result.v1Direction ===
+      result.mtfDirection;
+
+
+  const entryReady =
+    result.entryState === "READY";
+
+
+  const confidenceReady =
+    result.confidence >= 90;
+
+
+  const confirmationsReady =
+    result.confirmations >= 4;
+
+
+  const reason =
+    result.qualified
+      ? "Replay V1 and multi-timeframe entry conditions are aligned."
+      : !directionMatches
+      ? "Replay V1 and multi-timeframe directions are not aligned."
+      : !entryReady
+      ? "Replay multi-timeframe entry is not ready."
+      : !confidenceReady
+      ? "Replay V1 confidence is below 90%."
+      : !confirmationsReady
+      ? "Replay confirmations are below 4 of 6."
+      : "Replay signal is not qualified.";
+
+
+  setQualifiedReplaySignal({
+
+    replayIndex:
+      result.replayIndex,
+
+    action:
+      result.action,
+
+    qualified:
+      result.qualified,
+
+    confidence:
+      result.confidence,
+
+    confirmations:
+      result.confirmations,
+
+    v1Direction:
+      result.v1Direction,
+
+    mtfDirection:
+      result.mtfDirection,
+
+    entryState:
+      result.entryState,
+
+    reason,
+  });
+
 
 }, [
   executionMode,
@@ -293,224 +381,6 @@ useEffect(() => {
   historicalReplayWarmup1m,
 ]);
 
-useEffect(() => {
-
-  if (
-    executionMode !== "REPLAY" ||
-    !replayAnalysis5m ||
-    !replayAnalysis1m ||
-    !replayMultiTimeframe ||
-    !replayCurrentCandle
-  ) {
-    return;
-  }
-
-  // ======================================
-  // RUN V1 USING REPLAY 5m ANALYSIS
-  // ======================================
-
-  const replayV1 =
-    analyzeMarketV1({
-
-      price:
-        replayCurrentCandle.close,
-
-      previousPrice:
-        replayCurrentCandle.open,
-
-      trend:
-        replayAnalysis5m.trend,
-
-      rsi:
-        replayAnalysis5m.rsi,
-
-      ema20:
-        replayAnalysis5m.ema20,
-
-      ema50:
-        replayAnalysis5m.ema50,
-
-      macd:
-        replayAnalysis5m.macd,
-
-      pattern:
-        replayAnalysis5m.pattern,
-
-      support:
-        replayAnalysis5m.support,
-
-      resistance:
-        replayAnalysis5m.resistance,
-
-      marketStructure:
-        replayAnalysis5m.marketStructure,
-
-      breakout:
-        replayAnalysis5m.breakout,
-
-      volumeStrength:
-        "NORMAL",
-    });
-
-
-  setReplayAIAnalysis(
-    replayV1
-  );
-
-
-  // ======================================
-  // REPLAY CONFIRMATIONS
-  // ======================================
-
-  const isBuyCandidate =
-    replayV1.action === "BUY";
-
-  const isSellCandidate =
-    replayV1.action === "SELL";
-
-
-  const replayConfirmationChecks = [
-
-    // 1. Trend
-    isBuyCandidate
-      ? replayAnalysis5m.trend === "Bullish"
-      : isSellCandidate
-      ? replayAnalysis5m.trend === "Bearish"
-      : false,
-
-    // 2. Pattern
-    isBuyCandidate
-      ? (
-          replayAnalysis5m.pattern ===
-            "Bullish Engulfing" ||
-          replayAnalysis5m.pattern ===
-            "Hammer"
-        )
-      : isSellCandidate
-      ? replayAnalysis5m.pattern ===
-          "Bearish Engulfing"
-      : false,
-
-    // 3. Structure
-    isBuyCandidate
-      ? replayAnalysis5m.marketStructure ===
-          "UPTREND"
-      : isSellCandidate
-      ? replayAnalysis5m.marketStructure ===
-          "DOWNTREND"
-      : false,
-
-    // 4. Breakout
-    isBuyCandidate
-      ? replayAnalysis5m.breakout ===
-          "BREAKOUT"
-      : isSellCandidate
-      ? replayAnalysis5m.breakout ===
-          "BREAKDOWN"
-      : false,
-
-    // 5. Volume
-    false,
-
-    // 6. Confidence
-    replayV1.confidence >= 90,
-  ];
-
-
-  const confirmations =
-    replayConfirmationChecks.filter(
-      Boolean
-    ).length;
-
-
-  setReplayPassedConfirmations(
-    confirmations
-  );
-
-
-  // ======================================
-  // REPLAY QUALIFICATION
-  // ======================================
-
-  const directionMatches =
-    (
-      replayV1.action === "BUY" ||
-      replayV1.action === "SELL"
-    ) &&
-    replayV1.action ===
-      replayMultiTimeframe.direction;
-
-
-  const entryReady =
-    replayMultiTimeframe.entryState ===
-      "READY";
-
-
-  const confidenceReady =
-    replayV1.confidence >= 90;
-
-
-  const confirmationsReady =
-    confirmations >= 4;
-
-
-  const qualified =
-    directionMatches &&
-    entryReady &&
-    confidenceReady &&
-    confirmationsReady;
-
-
-  setQualifiedReplaySignal({
-
-    replayIndex:
-  replayState.currentIndex,
-
-    action:
-      qualified
-        ? replayV1.action
-        : "WAIT",
-
-    qualified,
-
-    confidence:
-      replayV1.confidence,
-
-    confirmations,
-
-    v1Direction:
-      replayV1.action,
-
-    mtfDirection:
-      replayMultiTimeframe.direction,
-
-    entryState:
-      replayMultiTimeframe.entryState,
-
-    reason:
-      qualified
-        ? "Replay V1 and multi-timeframe entry conditions are aligned."
-        : !directionMatches
-        ? "Replay V1 and multi-timeframe directions are not aligned."
-        : !entryReady
-        ? "Replay multi-timeframe entry is not ready."
-        : !confidenceReady
-        ? "Replay V1 confidence is below 90%."
-        : !confirmationsReady
-        ? "Replay confirmations are below 4 of 6."
-        : "Replay signal is not qualified.",
-  });
-
-}, [
-  executionMode,
-  replayAnalysis5m,
-  replayAnalysis1m,
-  replayMultiTimeframe,
-  replayCurrentCandle,
-  replayState.currentIndex,
-]);
-
-
 // ======================================
 // LOAD HISTORICAL REPLAY
 // ======================================
@@ -519,13 +389,13 @@ const loadHistoricalReplay = async () => {
 
   try {
 
-    const response =
-      await fetch(
-        "/api/replay-data",
-        {
-          cache: "no-store",
-        }
-      );
+const response =
+  await fetch(
+    `/api/replay-data-upstox?date=${replayDate}`,
+    {
+      cache: "no-store",
+    }
+  );
 
     const data =
       await response.json();
@@ -602,6 +472,136 @@ const handleReplayNext = () => {
   setReplayState(prev =>
     stepReplay(prev)
   );
+};
+
+const processActiveTradeUpdate = (
+  trade: NonNullable<typeof activeTrade>,
+  price: number
+) => {
+
+  const updatedTrade = updateTrade(
+    trade,
+    price
+  );
+
+  // TARGET 1 ALERT
+  if (
+    updatedTrade.target1Hit &&
+    !trade.target1Hit
+  ) {
+    setTradeAlert({
+      type: "SUCCESS",
+      title: "Target 1 Hit",
+      message: `${updatedTrade.action} trade reached Target 1 at ${Number(
+        updatedTrade.target1
+      ).toFixed(2)}.`,
+    });
+  }
+
+  // TARGET 2 ALERT
+  if (
+    updatedTrade.target2Hit &&
+    !trade.target2Hit
+  ) {
+    setTradeAlert({
+      type: "SUCCESS",
+      title: "Target 2 Hit",
+      message: `${updatedTrade.action} trade reached Target 2 at ${Number(
+        updatedTrade.target2
+      ).toFixed(2)}.`,
+    });
+  }
+
+  const stopLossJustHit =
+    updatedTrade.events?.some(
+      (event: any) =>
+        event.type === "STOP_LOSS_HIT"
+    ) &&
+    !trade.events?.some(
+      (event: any) =>
+        event.type === "STOP_LOSS_HIT"
+    );
+
+  if (stopLossJustHit) {
+    setTradeAlert({
+      type: "ERROR",
+      title: "Stop Loss Hit",
+      message: `${updatedTrade.action} trade hit stop loss at ${Number(
+        updatedTrade.stopLoss
+      ).toFixed(2)}.`,
+    });
+  }
+
+  const profitProtectionJustEnabled =
+    updatedTrade.events?.some(
+      (event: any) =>
+        event.type === "PROFIT_PROTECTION_ENABLED"
+    ) &&
+    !trade.events?.some(
+      (event: any) =>
+        event.type === "PROFIT_PROTECTION_ENABLED"
+    );
+
+  if (profitProtectionJustEnabled) {
+    setTradeAlert({
+      type: "INFO",
+      title: "Profit Protection Enabled",
+      message: `${updatedTrade.action} trade is now protected.`,
+    });
+  }
+
+  setActiveTrade(updatedTrade);
+
+  if (updatedTrade.status === "CLOSED") {
+
+    console.log(
+      "Trade Closed:",
+      JSON.stringify(
+        updatedTrade,
+        null,
+        2
+      )
+    );
+
+    setTradeHistory(prev => [
+      ...prev,
+      updatedTrade,
+    ]);
+
+    setTradeAlert({
+      type:
+        updatedTrade.result === "WIN"
+          ? "SUCCESS"
+          : updatedTrade.result === "LOSS"
+          ? "ERROR"
+          : "INFO",
+
+      title:
+        updatedTrade.result === "WIN"
+          ? "Trade Closed — Win"
+          : updatedTrade.result === "LOSS"
+          ? "Trade Closed — Loss"
+          : "Trade Closed — Breakeven",
+
+      message: `${updatedTrade.action} trade closed with P&L ${Number(
+        updatedTrade.realizedPnL ?? 0
+      ).toFixed(2)}.`,
+    });
+
+    // Start cooldown after a losing trade
+    if (
+      updatedTrade.result === "LOSS"
+    ) {
+
+      setTradeCooldown(true);
+
+      setTimeout(() => {
+        setTradeCooldown(false);
+      }, 60000);
+    }
+
+    setActiveTrade(null);
+  }
 };
 
 useEffect(() => {
@@ -934,6 +934,9 @@ const replayStableSignalCountRef =
   const replayLastProcessedIndexRef =
   useRef<number | null>(null);
 
+  const replayTradeLastProcessedIndexRef =
+  useRef<number | null>(null);
+
   const replayQualifiedHistoryRef =
   useRef<
     {
@@ -943,6 +946,85 @@ const replayStableSignalCountRef =
       confirmations: number;
     }[]
   >([]);
+
+
+  const replayExecutableHistoryRef =
+  useRef<
+    {
+      candle: number;
+      action: "BUY" | "SELL";
+      entry: number;
+      confidence: number;
+      confirmations: number;
+    }[]
+  >([]);
+
+  // ======================================
+// REPLAY ACTIVE TRADE MANAGEMENT
+//
+// Process a REPLAY trade exactly once
+// for each new Replay candle.
+// ======================================
+
+useEffect(() => {
+
+  if (executionMode !== "REPLAY") {
+    return;
+  }
+
+  if (
+    !activeTrade ||
+    activeTrade.source !== "REPLAY"
+  ) {
+
+    replayTradeLastProcessedIndexRef.current =
+      null;
+
+    return;
+  }
+
+  if (!replayCurrentCandle) {
+    return;
+  }
+
+  // When the REPLAY trade is first opened,
+  // treat the current candle as the entry
+  // candle. Do not manage the trade against
+  // that same candle again.
+  if (
+    replayTradeLastProcessedIndexRef.current ===
+    null
+  ) {
+
+    replayTradeLastProcessedIndexRef.current =
+      replayState.currentIndex;
+
+    return;
+  }
+
+  // This Replay candle was already used
+  // to update this trade.
+  if (
+    replayTradeLastProcessedIndexRef.current ===
+    replayState.currentIndex
+  ) {
+    return;
+  }
+
+  replayTradeLastProcessedIndexRef.current =
+    replayState.currentIndex;
+
+  processActiveTradeUpdate(
+    activeTrade,
+    replayCurrentCandle.close
+  );
+
+}, [
+  executionMode,
+  activeTrade,
+  replayState.currentIndex,
+  replayCurrentCandle,
+]);
 
 // ------------------------------
 
@@ -1734,6 +1816,484 @@ console.log(
 ]);
 
 // ======================================
+// REPLAY LAB DIAGNOSTIC
+// ======================================
+
+const runReplayDiagnostics = () => {
+
+if (
+  historicalReplay5m.length === 0 ||
+  replayExecutableHistoryRef.current.length === 0
+) {
+
+  console.log(
+    "🧪 REPLAY DIAGNOSTICS:",
+    "No executable replay opportunities available."
+  );
+
+  return;
+}
+
+const opportunities =
+  replayExecutableHistoryRef.current.map(
+    item => {
+
+      return {
+        candleIndex:
+          item.candle - 1,
+
+        action:
+          item.action,
+
+        entry:
+          item.entry,
+      };
+    }
+  );
+
+  const results =
+    analyzeReplayOpportunities(
+      opportunities,
+      historicalReplay5m
+    );
+
+
+  console.log(
+    "📊 REPLAY DIAGNOSTIC RESULTS:",
+    results
+  );
+};
+
+const showReplayQualifiedHistory = () => {
+
+  console.log(
+    "📋 REPLAY QUALIFIED HISTORY:",
+    replayQualifiedHistoryRef.current
+  );
+};
+
+const scanReplayQualifiedCandidates = () => {
+
+  if (
+    historicalReplay5m.length === 0 ||
+    replayQualifiedHistoryRef.current.length === 0
+  ) {
+
+    console.log(
+      "🔎 REPLAY CANDIDATE SCAN:",
+      "No qualified replay candidates available."
+    );
+
+    return;
+  }
+
+  const opportunities =
+    replayQualifiedHistoryRef.current
+      .map(item => {
+
+        const candleIndex =
+          item.candle - 1;
+
+        const candle =
+          historicalReplay5m[
+            candleIndex
+          ];
+
+        if (!candle) {
+          return null;
+        }
+
+        return {
+          candleIndex,
+          action:
+            item.action,
+          entry:
+            candle.close,
+        };
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          candleIndex: number;
+          action: "BUY" | "SELL";
+          entry: number;
+        } =>
+          item !== null
+      );
+
+
+  const results =
+    analyzeReplayOpportunities(
+      opportunities,
+      historicalReplay5m
+    );
+
+
+  console.log(
+    "🔎 REPLAY QUALIFIED CANDIDATE SCAN:",
+    results
+  );
+};
+
+const scanReplayDateRange = async () => {
+
+const startDate =
+  new Date("2026-01-01");
+
+const endDate =
+  new Date("2026-08-21");
+
+
+const allCandidates: any[] = [];
+
+const executableCandidates: any[] = [];
+
+const successfulScanDates: string[] = [];
+
+const skippedScanDates: string[] = [];
+
+  for (
+    let date = new Date(startDate);
+    date <= endDate;
+    date.setDate(
+      date.getDate() + 1
+    )
+  ) {
+
+    const dateString =
+      date
+        .toISOString()
+        .slice(0, 10);
+
+
+/*
+console.log(
+  "🔎 SCANNING REPLAY DATE:",
+  dateString
+);
+*/
+
+
+    try {
+
+      const response =
+        await fetch(
+          `/api/replay-data-upstox?date=${dateString}`,
+          {
+            cache: "no-store",
+          }
+        );
+
+
+if (!response.ok) {
+
+  skippedScanDates.push(
+    dateString
+  );
+
+  console.log(
+    "⏭️ SKIPPING DATE:",
+    dateString
+  );
+
+  continue;
+}
+
+
+      const data =
+        await response.json();
+
+
+if (!data.success) {
+
+  skippedScanDates.push(
+    dateString
+  );
+
+  continue;
+}
+
+successfulScanDates.push(
+  dateString
+);
+
+const dayData = {
+
+  date:
+    dateString,
+
+  warmup5m:
+    data.warmup5m,
+
+  warmup1m:
+    data.warmup1m,
+
+  candles5m:
+    data.candles5m,
+
+  candles1m:
+    data.candles1m,
+};
+
+const dayCandidates =
+  scanReplayDay(
+    dayData
+  );
+
+
+const dayExecutableTrades =
+  scanReplayDayExecutable(
+    dayData
+  );
+
+
+allCandidates.push(
+  ...dayCandidates
+);
+
+
+executableCandidates.push(
+  ...dayExecutableTrades
+);
+
+
+    } catch (error) {
+
+      console.error(
+        "❌ REPLAY DATE SCAN ERROR:",
+        dateString,
+        error
+      );
+    }
+  }
+
+
+const runnerCandidates =
+  findReplayRunnerCandidates(
+    allCandidates
+  );
+
+
+const runnerExitCandidates =
+  findReplayRunnerExitCandidates(
+    allCandidates
+  );
+
+  const openRunnerCandidates =
+  findOpenReplayRunnerCandidates(
+    allCandidates
+  );
+  const replaySummary =
+  summarizeReplayCandidates(
+    allCandidates
+  );
+
+  const executableReplaySummary =
+  summarizeReplayCandidates(
+    executableCandidates
+  );
+
+/*
+console.log(
+  "📊 MULTI-DAY REPLAY CANDIDATES:",
+  allCandidates
+);
+*/
+
+console.log(
+  "🏃 T2 / RUNNER CANDIDATES:",
+  runnerCandidates
+);
+
+
+console.log(
+  "🏁 RUNNER FINAL EXIT CANDIDATES:",
+  runnerExitCandidates
+);
+
+console.log(
+  "🏃 OPEN RUNNER CANDIDATES:",
+  openRunnerCandidates
+);
+
+console.log(
+  "📈 RAW CANDIDATE SUMMARY:",
+  replaySummary
+);
+
+/*
+console.log(
+  "🎯 EXECUTION-AWARE TRADES:",
+  executableCandidates
+);
+*/
+
+console.log(
+  "🎯 EXECUTION-AWARE SUMMARY:",
+  executableReplaySummary
+);
+
+console.log(
+  "🗓️ HISTORICAL DATA COVERAGE:",
+  {
+    requestedStartDate:
+      startDate
+        .toISOString()
+        .slice(0, 10),
+
+    requestedEndDate:
+      endDate
+        .toISOString()
+        .slice(0, 10),
+
+    successfulTradingDays:
+      successfulScanDates.length,
+
+    skippedCalendarDays:
+      skippedScanDates.length,
+
+    earliestSuccessfulDate:
+      successfulScanDates[0] ?? null,
+
+    latestSuccessfulDate:
+      successfulScanDates[
+        successfulScanDates.length - 1
+      ] ?? null,
+
+    successfulDates:
+      successfulScanDates,
+
+    skippedDates:
+      skippedScanDates,
+  }
+);
+
+};
+
+// ==========================================
+// RUN SERVER HISTORICAL BACKTEST
+// ==========================================
+
+const runServerHistoricalBacktest = async () => {
+
+  if (historicalScanRunning) {
+    return;
+  }
+
+  setHistoricalScanRunning(true);
+
+  setHistoricalScanError(null);
+
+  setHistoricalScanResult(null);
+
+
+  try {
+
+    const response =
+      await fetch(
+        "/api/replay-backtest?start=2026-01-01&end=2026-08-24",
+        {
+          cache: "no-store",
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data?.error ??
+        "Historical backtest failed."
+      );
+    }
+
+
+    setHistoricalScanResult(
+      data
+    );
+
+
+  } catch (error) {
+
+    setHistoricalScanError(
+      error instanceof Error
+        ? error.message
+        : "Historical backtest failed."
+    );
+
+  } finally {
+
+    setHistoricalScanRunning(
+      false
+    );
+  }
+};
+
+// ======================================
+// REPLAY EXECUTION TEST
+// ======================================
+
+const handleReplayExecutionTest = () => {
+
+  if (
+    executionMode !== "REPLAY" ||
+    !replayExecutionTest ||
+    !replayCurrentCandle ||
+    !replayAIAnalysis ||
+    !qualifiedReplaySignal
+  ) {
+    return;
+  }
+
+  if (
+    !qualifiedReplaySignal.qualified ||
+    (
+      qualifiedReplaySignal.action !== "BUY" &&
+      qualifiedReplaySignal.action !== "SELL"
+    )
+  ) {
+
+    console.log(
+      "🧪 REPLAY EXECUTION TEST BLOCKED:",
+      "Current replay candle is not qualified."
+    );
+
+    return;
+  }
+
+  console.log(
+    "🧪 REPLAY EXECUTION TEST:",
+    {
+      candle:
+        replayState.currentIndex + 1,
+
+      action:
+        qualifiedReplaySignal.action,
+
+      price:
+        replayCurrentCandle.close,
+
+      confidence:
+        replayAIAnalysis.confidence,
+
+      confirmations:
+        replayPassedConfirmations,
+    }
+  );
+
+  processTradeEngine(
+    replayAIAnalysis,
+    replayCurrentCandle.close,
+    replayPassedConfirmations,
+    "REPLAY"
+  );
+};
+
+// ======================================
 // TAKE TRADE
 // ======================================
 
@@ -1746,14 +2306,15 @@ const handleTakeTrade = () => {
   // CENTRAL EXECUTION VALIDATION
   // ======================================
 
-  const signalSource =
-    currentSignal.source ?? "SIMULATOR";
+const signalSource =
+  currentSignal.source ?? "SIMULATOR";
 
-  const currentExecutionPrice =
-    signalSource === "REAL"
-      ? realMarketData?.nifty?.price
-      : nifty.price;
-
+const currentExecutionPrice =
+  signalSource === "REAL"
+    ? realMarketData?.nifty?.price
+    : signalSource === "REPLAY"
+    ? replayCurrentCandle?.close
+    : nifty.price;
   if (currentExecutionPrice == null) {
 
     setTradeAlert({
@@ -1766,54 +2327,82 @@ const handleTakeTrade = () => {
     return;
   }
 
-  const validation =
-    validateExecution({
+const validation =
+  validateExecution({
 
-      source: signalSource,
+    source: signalSource,
 
-      lockedAction:
-        currentSignal.action,
+    lockedAction:
+      currentSignal.action,
 
-      lockedEntry:
-        currentSignal.entry,
+    lockedEntry:
+      currentSignal.entry,
 
-      currentPrice:
-        currentExecutionPrice,
+    currentPrice:
+      currentExecutionPrice,
 
-      // REAL
-      realQualified:
-        qualifiedRealSignal?.qualified,
 
-      realQualifiedAction:
-        qualifiedRealSignal?.action,
+    // ======================================
+    // REAL
+    // ======================================
 
-      realV1Action:
-        realAIAnalysis?.action,
+    realQualified:
+      qualifiedRealSignal?.qualified,
 
-      mtfDirection:
-        multiTimeframeAnalysis?.direction,
+    realQualifiedAction:
+      qualifiedRealSignal?.action,
 
-      mtfEntryState:
-        multiTimeframeAnalysis?.entryState,
+    realV1Action:
+      realAIAnalysis?.action,
 
-      // SIMULATOR
-      simulatorAction:
-  aiSignal.action as
-    | "BUY"
-    | "SELL"
-    | "WAIT"
-    | "WATCH",
+    mtfDirection:
+      multiTimeframeAnalysis?.direction,
 
-      simulatorRiskLevel:
-        aiSignal.riskLevel,
+    mtfEntryState:
+      multiTimeframeAnalysis?.entryState,
 
-      simulatorMarketCondition:
-        aiSignal.marketCondition,
 
-      simulatorAdvice:
-        aiSignal.advice,
-    });
+    // ======================================
+    // SIMULATOR
+    // ======================================
 
+    simulatorAction:
+      aiSignal.action as
+        | "BUY"
+        | "SELL"
+        | "WAIT"
+        | "WATCH",
+
+    simulatorRiskLevel:
+      aiSignal.riskLevel,
+
+    simulatorMarketCondition:
+      aiSignal.marketCondition,
+
+    simulatorAdvice:
+      aiSignal.advice,
+
+
+    // ======================================
+    // REPLAY
+    // ======================================
+
+    replayQualified:
+      qualifiedReplaySignal?.qualified,
+
+    replayQualifiedAction:
+      qualifiedReplaySignal?.action,
+
+    replayV1Action:
+      replayAIAnalysis?.action,
+
+    replayMtfDirection:
+      replayMultiTimeframe?.direction,
+
+    replayMtfEntryState:
+      replayMultiTimeframe?.entryState,
+
+  });
 
   if (!validation.allowed) {
 
@@ -2124,6 +2713,30 @@ source,
   setSignalExpiry(
     new Date(Date.now() + SIGNAL_DURATION)
   );
+
+  if (source === "REPLAY") {
+
+  replayExecutableHistoryRef.current.push({
+    candle:
+      replayState.currentIndex + 1,
+
+    action:
+      plan.action,
+
+    entry:
+      plan.entry,
+
+    confidence:
+      plan.confidence,
+
+    confirmations,
+  });
+
+  console.log(
+    "🎯 REPLAY EXECUTABLE HISTORY:",
+    replayExecutableHistoryRef.current
+  );
+}
 
   console.log(
     "🔒 SIGNAL LOCKED UNTIL:",
@@ -2578,143 +3191,30 @@ if (executionMode === "SIMULATOR") {
 
 }
 
-const activeTradePrice =
-  activeTrade?.source === "REAL"
-    ? realMarketData?.nifty?.price
-    : activeTrade?.source === "REPLAY"
-    ? replayCurrentCandle?.close
-    : newNifty.price;
+// ======================================
+// ACTIVE TRADE UPDATE
+// REAL + SIMULATOR ONLY
+//
+// REPLAY trade management is processed
+// separately from Replay candle changes.
+// ======================================
 
 if (
   activeTrade &&
-  activeTradePrice != null
+  activeTrade.source !== "REPLAY"
 ) {
 
-  const updatedTrade = updateTrade(
-    activeTrade,
-    activeTradePrice
-  );
+  const activeTradePrice =
+    activeTrade.source === "REAL"
+      ? realMarketData?.nifty?.price
+      : newNifty.price;
 
-/*
-console.log(
-  "Updated Trade:",
-  JSON.stringify(updatedTrade, null, 2)
-);
-*/
+  if (activeTradePrice != null) {
 
-  // TARGET 1 ALERT
-if (
-  updatedTrade.target1Hit &&
-  !activeTrade.target1Hit
-) {
-  setTradeAlert({
-    type: "SUCCESS",
-    title: "Target 1 Hit",
-    message: `${updatedTrade.action} trade reached Target 1 at ${Number(
-      updatedTrade.target1
-    ).toFixed(2)}.`,
-  });
-}
-
-
-// TARGET 2 ALERT
-if (
-  updatedTrade.target2Hit &&
-  !activeTrade.target2Hit
-) {
-  setTradeAlert({
-    type: "SUCCESS",
-    title: "Target 2 Hit",
-    message: `${updatedTrade.action} trade reached Target 2 at ${Number(
-      updatedTrade.target2
-    ).toFixed(2)}.`,
-  });
-}
-
-const stopLossJustHit =
-  updatedTrade.events?.some(
-    (event: any) =>
-      event.type === "STOP_LOSS_HIT"
-  ) &&
-  !activeTrade.events?.some(
-    (event: any) =>
-      event.type === "STOP_LOSS_HIT"
-  );
-
-if (stopLossJustHit) {
-  setTradeAlert({
-    type: "ERROR",
-    title: "Stop Loss Hit",
-    message: `${updatedTrade.action} trade hit stop loss at ${Number(
-      updatedTrade.stopLoss
-    ).toFixed(2)}.`,
-  });
-}
-
-const profitProtectionJustEnabled =
-  updatedTrade.events?.some(
-    (event: any) =>
-      event.type === "PROFIT_PROTECTION_ENABLED"
-  ) &&
-  !activeTrade.events?.some(
-    (event: any) =>
-      event.type === "PROFIT_PROTECTION_ENABLED"
-  );
-
-if (profitProtectionJustEnabled) {
-  setTradeAlert({
-    type: "INFO",
-    title: "Profit Protection Enabled",
-    message: `${updatedTrade.action} trade is now protected.`,
-  });
-}
-
-  setActiveTrade(updatedTrade);
-
-  if (updatedTrade.status === "CLOSED") {
-
-    console.log(
-      "Trade Closed:",
-      JSON.stringify(updatedTrade, null, 2)
+    processActiveTradeUpdate(
+      activeTrade,
+      activeTradePrice
     );
-
-    setTradeHistory(prev => [
-      ...prev,
-      updatedTrade,
-    ]);
-
-    setTradeAlert({
-  type:
-    updatedTrade.result === "WIN"
-      ? "SUCCESS"
-      : updatedTrade.result === "LOSS"
-      ? "ERROR"
-      : "INFO",
-
-  title:
-    updatedTrade.result === "WIN"
-      ? "Trade Closed — Win"
-      : updatedTrade.result === "LOSS"
-      ? "Trade Closed — Loss"
-      : "Trade Closed — Breakeven",
-
-  message: `${updatedTrade.action} trade closed with P&L ${Number(
-    updatedTrade.realizedPnL ?? 0
-  ).toFixed(2)}.`,
-});
-
-    // Start cooldown after a losing trade
-    if (updatedTrade.result === "LOSS") {
-
-      setTradeCooldown(true);
-
-      setTimeout(() => {
-        setTradeCooldown(false);
-      }, 60000);
-
-    }
-
-    setActiveTrade(null);
   }
 }
 
@@ -3411,13 +3911,44 @@ if (detectedPattern !== "No Pattern") {
 
 <div className="flex gap-2 mb-3">
 
+<div className="flex items-center gap-2">
+
+  <input
+    type="date"
+    value={replayDate}
+    onChange={(event) =>
+      setReplayDate(
+        event.target.value
+      )
+    }
+    disabled={
+      replayRunning ||
+      !!currentSignal ||
+      !!activeTrade
+    }
+    className="px-3 py-2 rounded-md border border-gray-700 bg-gray-800 text-white"
+  />
+
   <button
     type="button"
     onClick={loadHistoricalReplay}
-    className="px-4 py-2 rounded-md border border-gray-700 bg-gray-800"
+    disabled={
+      replayRunning ||
+      !!currentSignal ||
+      !!activeTrade
+    }
+    className={`px-4 py-2 rounded-md border border-gray-700 bg-gray-800 ${
+      replayRunning ||
+      currentSignal ||
+      activeTrade
+        ? "opacity-50 cursor-not-allowed"
+        : ""
+    }`}
   >
-    Load Friday Data
+    Load Replay Data
   </button>
+
+</div>
 
   <button
     type="button"
@@ -3468,6 +3999,50 @@ if (detectedPattern !== "No Pattern") {
     Next Candle
   </button>
 
+<button
+  type="button"
+  onClick={() =>
+    setReplayExecutionTest(
+      prev => !prev
+    )
+  }
+  disabled={!replayLoaded}
+  className={`px-4 py-2 rounded-md border ${
+    replayExecutionTest
+      ? "bg-purple-700 border-purple-500 text-white"
+      : "bg-gray-800 border-gray-700 text-gray-300"
+  } ${
+    !replayLoaded
+      ? "opacity-50 cursor-not-allowed"
+      : ""
+  }`}
+>
+  {replayExecutionTest
+    ? "Execution Test ON"
+    : "Execution Test OFF"}
+</button>
+
+<button
+  type="button"
+  onClick={handleReplayExecutionTest}
+  disabled={
+    !replayExecutionTest ||
+    !qualifiedReplaySignal?.qualified ||
+    !!currentSignal ||
+    !!activeTrade
+  }
+  className={`px-4 py-2 rounded-md border ${
+    replayExecutionTest &&
+    qualifiedReplaySignal?.qualified &&
+    !currentSignal &&
+    !activeTrade
+      ? "bg-green-700 border-green-500 text-white"
+      : "bg-gray-800 border-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+  }`}
+>
+  Create Test Trade Plan
+</button>
+
   <button
     type="button"
 
@@ -3485,10 +4060,14 @@ onClick={() => {
 
   replayStableSignalCountRef.current = 0;
 
-  replayLastProcessedIndexRef.current =
-    null;
+replayLastProcessedIndexRef.current =
+  null;
 
-  replayQualifiedHistoryRef.current = [];
+replayTradeLastProcessedIndexRef.current =
+  null;
+
+replayQualifiedHistoryRef.current = [];
+replayExecutableHistoryRef.current = [];
 
   // Clear shared signal state
   setCurrentSignal(null);
@@ -3524,6 +4103,659 @@ onClick={() => {
   </button>
 
 </div>
+
+<button
+  type="button"
+  onClick={showReplayQualifiedHistory}
+  disabled={!replayLoaded}
+  className={`px-4 py-2 rounded-md border ${
+    replayLoaded
+      ? "bg-gray-800 border-gray-600 text-white"
+      : "bg-gray-800 border-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+  }`}
+>
+  Show Qualified History
+</button>
+
+{/* ======================================
+    HISTORICAL BACKTEST CONTROLS
+====================================== */}
+
+<div className="flex flex-wrap gap-3 items-start">
+
+  <button
+    type="button"
+    onClick={runServerHistoricalBacktest}
+    disabled={historicalScanRunning}
+    className={`px-4 py-2 rounded-md border ${
+      historicalScanRunning
+        ? "bg-gray-800 border-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+        : "bg-emerald-700 border-emerald-500 text-white"
+    }`}
+  >
+    {historicalScanRunning
+      ? "Scanning Historical Data..."
+      : "Run Server Backtest"}
+  </button>
+
+
+  <details className="rounded-md border border-gray-700 bg-gray-900">
+
+    <summary className="px-4 py-2 cursor-pointer text-sm text-gray-300">
+      Developer / Diagnostics
+    </summary>
+
+
+    <div className="p-3 pt-1 flex flex-wrap gap-3">
+
+      <button
+        type="button"
+        onClick={scanReplayQualifiedCandidates}
+        disabled={
+          !replayLoaded ||
+          replayQualifiedHistoryRef.current.length === 0
+        }
+        className={`px-4 py-2 rounded-md border ${
+          replayLoaded &&
+          replayQualifiedHistoryRef.current.length > 0
+            ? "bg-purple-700 border-purple-500 text-white"
+            : "bg-gray-800 border-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+        }`}
+      >
+        Scan Qualified Candidates
+      </button>
+
+
+      <button
+        type="button"
+        onClick={scanReplayDateRange}
+        className="px-4 py-2 rounded-md border bg-indigo-700 border-indigo-500 text-white"
+      >
+        Scan Multi-Day Replay
+      </button>
+
+    </div>
+
+  </details>
+
+</div>
+
+{historicalScanError && (
+  <div className="mt-3 p-3 rounded-md border border-red-700 bg-red-950/40 text-red-300">
+    Historical backtest failed: {historicalScanError}
+  </div>
+)}
+
+
+{historicalScanResult && (
+  <div className="mt-4 p-4 rounded-lg border border-emerald-700 bg-gray-900">
+
+    <div className="text-lg font-semibold mb-3">
+      ✅ Historical Backtest Complete
+    </div>
+
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+
+      <div>
+        <div className="text-gray-400">
+          Trading Days
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.coverage?.successfulTradingDays ?? 0}
+        </div>
+      </div>
+
+<div>
+  <div className="text-gray-400">
+    Skipped Days
+  </div>
+  <div className="font-semibold">
+    {historicalScanResult.coverage?.skippedCalendarDays ?? 0}
+  </div>
+</div>
+
+<div>
+  <div className="text-gray-400">
+    Failed Days
+  </div>
+  <div className="font-semibold">
+    {historicalScanResult.coverage?.failedDays ?? 0}
+  </div>
+</div>
+
+      <div>
+        <div className="text-gray-400">
+          Executable Trades
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.totalCandidates ?? 0}
+        </div>
+      </div>
+
+<div>
+  <div className="text-gray-400">
+    BUY Trades
+  </div>
+  <div className="font-semibold">
+    {historicalScanResult.executionAwareSummary?.buyCandidates ?? 0}
+  </div>
+</div>
+
+
+<div>
+  <div className="text-gray-400">
+    SELL Trades
+  </div>
+  <div className="font-semibold">
+    {historicalScanResult.executionAwareSummary?.sellCandidates ?? 0}
+  </div>
+</div>
+
+      <div>
+        <div className="text-gray-400">
+          Wins
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.wins ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Losses
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.losses ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Breakevens
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.breakevens ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Open Trades
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.openTrades ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Target 1 Hits
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.target1Hits ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Target 2 Hits
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.target2Hits ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Runner Activations
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.executionAwareSummary?.runnerActivations ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Total P/L
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.executionAwareSummary?.totalRealizedPnL ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Win Rate
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.executionAwareSummary?.winRate ?? 0
+          ).toFixed(2)}%
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Scan Duration
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.performance?.scanDurationSeconds ?? 0
+          ).toFixed(2)}s
+        </div>
+      </div>
+
+    </div>
+
+
+    {/* ======================================
+        PERFORMANCE ANALYTICS
+    ====================================== */}
+
+    {historicalScanResult?.performanceAnalytics && (
+
+      <div className="mt-6">
+
+        <h3 className="text-lg font-semibold mb-4">
+          📊 Performance Analytics
+        </h3>
+
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+          <div>
+            <div className="text-gray-400">
+              Net P/L
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.netPnL.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Gross Profit
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.grossProfit.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Gross Loss
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.grossLoss.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Profit Factor
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.profitFactor === Infinity
+                ? "∞"
+                : historicalScanResult.performanceAnalytics.profitFactor.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Average Trade
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.averageTrade.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Average Win
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.averageWin.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Average Loss
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.averageLoss.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Max Drawdown
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.maxDrawdown.toFixed(2)}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Longest Win Streak
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.longestWinningStreak}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Longest Loss Streak
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.longestLosingStreak}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              T1 Hits
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.target1Hits}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              T2 Hits
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.target2Hits}
+            </div>
+          </div>
+
+
+          <div>
+            <div className="text-gray-400">
+              Runner Activations
+            </div>
+            <div className="font-semibold">
+              {historicalScanResult.performanceAnalytics.runnerActivations}
+            </div>
+          </div>
+
+        </div>
+
+{/* ======================================
+    MONTHLY PERFORMANCE
+====================================== */}
+
+{Array.isArray(
+  historicalScanResult.performanceAnalytics.monthlyPerformance
+) &&
+historicalScanResult.performanceAnalytics.monthlyPerformance.length > 0 && (
+
+  <div className="mt-6">
+
+    <h4 className="text-base font-semibold mb-3">
+      📅 Monthly Performance
+    </h4>
+
+
+    <div className="overflow-x-auto">
+
+      <table className="w-full text-sm">
+
+        <thead>
+
+          <tr className="text-left text-gray-400 border-b border-gray-700">
+
+            <th className="py-2 pr-4">
+              Month
+            </th>
+
+            <th className="py-2 pr-4">
+              Trades
+            </th>
+
+            <th className="py-2 pr-4">
+              Wins
+            </th>
+
+            <th className="py-2 pr-4">
+              Losses
+            </th>
+
+            <th className="py-2 pr-4">
+              BE
+            </th>
+
+            <th className="py-2 pr-4">
+              Win Rate
+            </th>
+
+            <th className="py-2">
+              Net P/L
+            </th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody>
+
+          {historicalScanResult.performanceAnalytics.monthlyPerformance.map(
+            (
+              month: any
+            ) => (
+
+              <tr
+                key={month.month}
+                className="border-b border-gray-800"
+              >
+
+                <td className="py-2 pr-4">
+                  {month.month}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {month.trades}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {month.wins}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {month.losses}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {month.breakevens}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {Number(
+                    month.winRate
+                  ).toFixed(2)}%
+                </td>
+
+                <td className="py-2">
+                  {Number(
+                    month.netPnL
+                  ).toFixed(2)}
+                </td>
+
+              </tr>
+
+            )
+          )}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+)}
+
+      </div>
+
+    )}
+
+  </div>
+)}
+
+{/* ======================================
+    EQUITY CURVE
+====================================== */}
+
+{historicalScanResult?.performanceAnalytics &&
+Array.isArray(
+  historicalScanResult.performanceAnalytics.equityCurve
+) &&
+historicalScanResult.performanceAnalytics.equityCurve.length > 0 && (
+
+  <details className="mt-6 rounded-lg border border-gray-700 bg-gray-900">
+
+    <summary className="px-4 py-3 cursor-pointer font-semibold">
+      📈 Equity Curve
+    </summary>
+
+    <div className="p-4">
+
+    <div className="text-sm text-gray-400 mb-3">
+      Cumulative realized P/L across completed historical trades.
+    </div>
+
+    <div className="overflow-x-auto">
+
+      <table className="w-full text-sm">
+
+        <thead>
+
+          <tr className="text-left text-gray-400 border-b border-gray-700">
+
+            <th className="py-2 pr-4">
+              Trade
+            </th>
+
+            <th className="py-2 pr-4">
+              Date
+            </th>
+
+            <th className="py-2 pr-4">
+              Cumulative P/L
+            </th>
+
+            <th className="py-2">
+              Drawdown
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {historicalScanResult.performanceAnalytics.equityCurve.map(
+            (
+              point: any
+            ) => (
+
+              <tr
+                key={point.tradeNumber}
+                className="border-b border-gray-800"
+              >
+
+                <td className="py-2 pr-4">
+                  {point.tradeNumber}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {point.date}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {Number(
+                    point.cumulativePnL
+                  ).toFixed(2)}
+                </td>
+
+                <td className="py-2">
+                  {Number(
+                    point.drawdown
+                  ).toFixed(2)}
+                </td>
+
+              </tr>
+
+            )
+          )}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    </div>
+
+  </details>
+
+)}
+{/* ======================================
+    REPLAY TECHNICAL DIAGNOSTICS
+====================================== */}
+
+<details className="mt-3 rounded-md border border-gray-700 bg-gray-900">
+
+  <summary className="px-4 py-2 cursor-pointer text-sm text-gray-300">
+    Replay Technical Diagnostics
+  </summary>
+
+  <div className="p-4 space-y-2 text-sm">
+
+<button
+  type="button"
+  onClick={runReplayDiagnostics}
+  disabled={
+    !replayLoaded ||
+    replayExecutableHistoryRef.current.length === 0
+  }
+  className={`px-4 py-2 rounded-md border ${
+    replayLoaded &&
+    replayExecutableHistoryRef.current.length > 0
+      ? "bg-cyan-700 border-cyan-500 text-white"
+      : "bg-gray-800 border-gray-700 text-gray-500 opacity-50 cursor-not-allowed"
+  }`}
+>
+  Run Diagnostics
+</button>
 
     <div>
       Candle:{" "}
@@ -3700,12 +4932,700 @@ onClick={() => {
     <strong>
       {qualifiedReplaySignal?.reason ?? "--"}
     </strong>
-  </div>
-
 </div>
 
 </div>
+
   </div>
+
+  </div>
+
+</details>
+
+</div>
+
+)}
+
+{/* ======================================
+    HYPOTHETICAL SELL STABILITY COMPARISON
+====================================== */}
+
+{historicalScanResult?.hypotheticalSellImmediateSummary && (
+
+  <div className="mt-6 p-4 rounded-lg border border-gray-700 bg-gray-900">
+
+    <h4 className="text-base font-semibold mb-3">
+      🧪 SELL Stability Comparison
+    </h4>
+
+    <div className="text-sm text-gray-400 mb-4">
+      Compares the current strategy against a hypothetical version where SELL requires only 1 qualified observation while BUY remains unchanged.
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+      <div className="p-3 rounded-md border border-gray-700 bg-gray-950">
+
+        <div className="font-semibold mb-3">
+          Current Strategy
+        </div>
+
+        <div className="space-y-2 text-sm">
+
+          <div>
+            Trades:{" "}
+            <strong>
+              {historicalScanResult.executionAwareSummary?.totalCandidates ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            BUY:{" "}
+            <strong>
+              {historicalScanResult.executionAwareSummary?.buyCandidates ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            SELL:{" "}
+            <strong>
+              {historicalScanResult.executionAwareSummary?.sellCandidates ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Wins:{" "}
+            <strong>
+              {historicalScanResult.executionAwareSummary?.wins ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Losses:{" "}
+            <strong>
+              {historicalScanResult.executionAwareSummary?.losses ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Breakevens:{" "}
+            <strong>
+              {historicalScanResult.executionAwareSummary?.breakevens ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Win Rate:{" "}
+            <strong>
+              {Number(
+                historicalScanResult.executionAwareSummary?.winRate ?? 0
+              ).toFixed(2)}%
+            </strong>
+          </div>
+
+          <div>
+            Net P/L:{" "}
+            <strong>
+              {Number(
+                historicalScanResult.executionAwareSummary?.totalRealizedPnL ?? 0
+              ).toFixed(2)}
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div className="p-3 rounded-md border border-gray-700 bg-gray-950">
+
+        <div className="font-semibold mb-3">
+          Hypothetical SELL Stability = 1
+        </div>
+
+        <div className="space-y-2 text-sm">
+
+          <div>
+            Trades:{" "}
+            <strong>
+              {historicalScanResult.hypotheticalSellImmediateSummary.totalCandidates ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            BUY:{" "}
+            <strong>
+              {historicalScanResult.hypotheticalSellImmediateSummary.buyCandidates ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            SELL:{" "}
+            <strong>
+              {historicalScanResult.hypotheticalSellImmediateSummary.sellCandidates ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Wins:{" "}
+            <strong>
+              {historicalScanResult.hypotheticalSellImmediateSummary.wins ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Losses:{" "}
+            <strong>
+              {historicalScanResult.hypotheticalSellImmediateSummary.losses ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Breakevens:{" "}
+            <strong>
+              {historicalScanResult.hypotheticalSellImmediateSummary.breakevens ?? 0}
+            </strong>
+          </div>
+
+          <div>
+            Win Rate:{" "}
+            <strong>
+              {Number(
+                historicalScanResult.hypotheticalSellImmediateSummary.winRate ?? 0
+              ).toFixed(2)}%
+            </strong>
+          </div>
+
+          <div>
+            Net P/L:{" "}
+            <strong>
+              {Number(
+                historicalScanResult.hypotheticalSellImmediateSummary.totalRealizedPnL ?? 0
+              ).toFixed(2)}
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+
+{/* ======================================
+    HYPOTHETICAL SELL PERFORMANCE ANALYTICS
+====================================== */}
+
+{historicalScanResult?.hypotheticalSellImmediateAnalytics && (
+
+  <div className="mt-6 p-4 rounded-lg border border-gray-700 bg-gray-900">
+
+    <h4 className="text-base font-semibold mb-3">
+      📊 Hypothetical SELL Stability Analytics
+    </h4>
+
+    <div className="text-sm text-gray-400 mb-4">
+      Risk and performance metrics when SELL requires 1 qualified observation while BUY remains unchanged.
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+      <div>
+        <div className="text-gray-400">
+          Net P/L
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.hypotheticalSellImmediateAnalytics.netPnL ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Profit Factor
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.hypotheticalSellImmediateAnalytics.profitFactor ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Average Trade
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.hypotheticalSellImmediateAnalytics.averageTrade ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Average Win
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.hypotheticalSellImmediateAnalytics.averageWin ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Average Loss
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.hypotheticalSellImmediateAnalytics.averageLoss ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Max Drawdown
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.hypotheticalSellImmediateAnalytics.maxDrawdown ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Longest Win Streak
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.hypotheticalSellImmediateAnalytics.longestWinningStreak ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Longest Loss Streak
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.hypotheticalSellImmediateAnalytics.longestLosingStreak ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          T1 Hits
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.hypotheticalSellImmediateAnalytics.target1Hits ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          T2 Hits
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.hypotheticalSellImmediateAnalytics.target2Hits ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Runner Activations
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.hypotheticalSellImmediateAnalytics.runnerActivations ?? 0}
+        </div>
+    </div>
+
+</div>
+
+    {/* ======================================
+        HYPOTHETICAL MONTHLY PERFORMANCE
+    ====================================== */}
+
+    {Array.isArray(
+      historicalScanResult.hypotheticalSellImmediateAnalytics.monthlyPerformance
+    ) &&
+    historicalScanResult.hypotheticalSellImmediateAnalytics.monthlyPerformance.length > 0 && (
+
+      <div className="mt-6 pt-4 border-t border-gray-700">
+
+        <h5 className="font-semibold mb-3">
+          📅 Hypothetical Monthly Performance
+        </h5>
+
+        <div className="overflow-x-auto">
+
+          <table className="w-full text-sm">
+
+            <thead>
+
+              <tr className="text-left text-gray-400 border-b border-gray-700">
+
+                <th className="py-2 pr-4">
+                  Month
+                </th>
+
+                <th className="py-2 pr-4">
+                  Trades
+                </th>
+
+                <th className="py-2 pr-4">
+                  Wins
+                </th>
+
+                <th className="py-2 pr-4">
+                  Losses
+                </th>
+
+                <th className="py-2 pr-4">
+                  BE
+                </th>
+
+                <th className="py-2 pr-4">
+                  Win Rate
+                </th>
+
+                <th className="py-2">
+                  Net P/L
+                </th>
+
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {historicalScanResult.hypotheticalSellImmediateAnalytics.monthlyPerformance.map(
+                (
+                  month: any
+                ) => (
+
+                  <tr
+                    key={month.month}
+                    className="border-b border-gray-800"
+                  >
+
+                    <td className="py-2 pr-4">
+                      {month.month}
+                    </td>
+
+                    <td className="py-2 pr-4">
+                      {month.trades}
+                    </td>
+
+                    <td className="py-2 pr-4">
+                      {month.wins}
+                    </td>
+
+                    <td className="py-2 pr-4">
+                      {month.losses}
+                    </td>
+
+                    <td className="py-2 pr-4">
+                      {month.breakevens}
+                    </td>
+
+                    <td className="py-2 pr-4">
+                      {Number(
+                        month.winRate
+                      ).toFixed(2)}%
+                    </td>
+
+                    <td className="py-2">
+                      {Number(
+                        month.netPnL
+                      ).toFixed(2)}
+                    </td>
+
+                  </tr>
+
+                )
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    )}
+
+
+  </div>
+
+)}
+
+{/* ======================================
+    SELL PIPELINE EVALUATION
+====================================== */}
+
+{historicalScanResult?.sellPipelineEvaluation && (
+
+  <div className="mt-6 p-4 rounded-lg border border-gray-700 bg-gray-900">
+
+    <h4 className="text-base font-semibold mb-3">
+      🔍 SELL Pipeline Evaluation
+    </h4>
+
+    <div className="text-sm text-gray-400 mb-4">
+      Tracks where SELL candidates are being eliminated before execution.
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+      <div>
+        <div className="text-gray-400">
+          Raw SELL Candidates
+        </div>
+
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.rawSellCandidates ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Consecutive SELL Pairs
+        </div>
+
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.consecutiveSellPairs ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Max SELL Streak
+        </div>
+
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.maxSellQualifiedStreak ?? 0}
+        </div>
+      </div>
+
+
+      <div>
+        <div className="text-gray-400">
+          Executable SELL Trades
+        </div>
+
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.executableSellTrades ?? 0}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+)}
+
+{/* ======================================
+    RAW SELL PERFORMANCE
+====================================== */}
+
+{historicalScanResult?.sellPipelineEvaluation?.rawSellPerformance && (
+
+  <div className="mt-4 p-4 rounded-lg border border-gray-700 bg-gray-900">
+
+    <h4 className="text-base font-semibold mb-3">
+      📉 Raw SELL Performance
+    </h4>
+
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+
+      <div>
+        <div className="text-gray-400">
+          Wins
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.rawSellPerformance.wins ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Losses
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.rawSellPerformance.losses ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Breakevens
+        </div>
+        <div className="font-semibold">
+          {historicalScanResult.sellPipelineEvaluation.rawSellPerformance.breakevens ?? 0}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Win Rate
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.sellPipelineEvaluation.rawSellPerformance.winRate ?? 0
+          ).toFixed(2)}%
+        </div>
+      </div>
+
+      <div>
+        <div className="text-gray-400">
+          Net P/L
+        </div>
+        <div className="font-semibold">
+          {Number(
+            historicalScanResult.sellPipelineEvaluation.rawSellPerformance.totalRealizedPnL ?? 0
+          ).toFixed(2)}
+        </div>
+      </div>
+
+<div>
+  <div className="text-gray-400">
+    Open / Unresolved
+  </div>
+
+  <div className="font-semibold">
+    {historicalScanResult.sellPipelineEvaluation.rawSellOpenTrades ?? 0}
+  </div>
+</div>
+
+    </div>
+
+  </div>
+
+)}
+
+{/* ======================================
+    CONFIRMATION PERFORMANCE
+====================================== */}
+
+{historicalScanResult?.performanceAnalytics &&
+Array.isArray(
+  historicalScanResult.performanceAnalytics.confirmationPerformance
+) &&
+historicalScanResult.performanceAnalytics.confirmationPerformance.length > 0 && (
+
+  <div className="mt-6 p-4 rounded-lg border border-gray-700 bg-gray-900">
+
+    <h4 className="text-base font-semibold mb-3">
+      🎯 Confirmation Performance
+    </h4>
+
+    <div className="text-sm text-gray-400 mb-3">
+      Performance grouped by the number of confirmations at trade entry.
+    </div>
+
+    <div className="overflow-x-auto">
+
+      <table className="w-full text-sm">
+
+        <thead>
+          <tr className="text-left text-gray-400 border-b border-gray-700">
+
+            <th className="py-2 pr-4">
+              Confirmations
+            </th>
+
+            <th className="py-2 pr-4">
+              Trades
+            </th>
+
+            <th className="py-2 pr-4">
+              Wins
+            </th>
+
+            <th className="py-2 pr-4">
+              Losses
+            </th>
+
+            <th className="py-2 pr-4">
+              BE
+            </th>
+
+            <th className="py-2 pr-4">
+              Win Rate
+            </th>
+
+            <th className="py-2">
+              Net P/L
+            </th>
+
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {historicalScanResult.performanceAnalytics.confirmationPerformance.map(
+            (
+              row: any
+            ) => (
+
+              <tr
+                key={row.confirmations}
+                className="border-b border-gray-800"
+              >
+
+                <td className="py-2 pr-4">
+                  {row.confirmations}/6
+                </td>
+
+                <td className="py-2 pr-4">
+                  {row.trades}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {row.wins}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {row.losses}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {row.breakevens}
+                </td>
+
+                <td className="py-2 pr-4">
+                  {Number(
+                    row.winRate
+                  ).toFixed(2)}%
+                </td>
+
+                <td className="py-2">
+                  {Number(
+                    row.netPnL
+                  ).toFixed(2)}
+                </td>
+
+              </tr>
+
+            )
+          )}
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
 )}
 
 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">

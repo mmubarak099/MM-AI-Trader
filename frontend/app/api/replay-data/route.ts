@@ -17,36 +17,66 @@ const yahooFinance =
 // REPLAY DATA API
 // ==========================================
 //
-// Replay date:
-// Friday 21 August 2026
+// Example:
 //
-// Thursday data is also loaded as warm-up
-// history so indicators can work from
-// Friday market open.
+// /api/replay-data?date=2026-08-21
+//
+// The selected date becomes the Replay day.
+//
+// Historical candles before that date are
+// automatically used as indicator warm-up.
 // ==========================================
 
-export async function GET() {
+export async function GET(
+  request: Request
+) {
 
   try {
 
-    // --------------------------------------
-    // Historical warm-up starts Thursday
-    // --------------------------------------
+    // ======================================
+    // READ REPLAY DATE
+    // ======================================
 
-    const period1 =
+    const url =
+      new URL(request.url);
+
+    const requestedDate =
+      url.searchParams.get("date") ??
+      "2026-08-21";
+
+
+    // ======================================
+    // TARGET MARKET SESSION
+    // ======================================
+
+    const replayStart =
       new Date(
-        "2026-08-20T09:15:00+05:30"
+        `${requestedDate}T09:15:00+05:30`
       );
 
-    // --------------------------------------
-    // End after Friday market close
-    // --------------------------------------
-
-    const period2 =
+    const replayEnd =
       new Date(
-        "2026-08-21T15:31:00+05:30"
+        `${requestedDate}T15:31:00+05:30`
       );
 
+
+    // ======================================
+    // LOAD EXTRA HISTORY FOR WARM-UP
+    //
+    // Seven calendar days gives us room for
+    // weekends and normal market holidays.
+    // ======================================
+
+    const historyStart =
+      new Date(
+        replayStart.getTime() -
+        7 * 24 * 60 * 60 * 1000
+      );
+
+
+    // ======================================
+    // DOWNLOAD HISTORICAL DATA
+    // ======================================
 
     const [
       nifty5m,
@@ -56,18 +86,28 @@ export async function GET() {
       yahooFinance.chart(
         "^NSEI",
         {
-          period1,
-          period2,
-          interval: "5m",
+          period1:
+            historyStart,
+
+          period2:
+            replayEnd,
+
+          interval:
+            "5m",
         }
       ),
 
       yahooFinance.chart(
         "^NSEI",
         {
-          period1,
-          period2,
-          interval: "1m",
+          period1:
+            historyStart,
+
+          period2:
+            replayEnd,
+
+          interval:
+            "1m",
         }
       ),
 
@@ -75,20 +115,20 @@ export async function GET() {
 
 
     // ======================================
-    // NORMALIZE 5 MINUTE DATA
+    // NORMALIZE 5m DATA
     // ======================================
 
     const all5m =
       nifty5m.quotes
         .filter(
-          (candle) =>
+          candle =>
             candle.open != null &&
             candle.high != null &&
             candle.low != null &&
             candle.close != null
         )
         .map(
-          (candle) => ({
+          candle => ({
             time:
               candle.date,
 
@@ -111,20 +151,20 @@ export async function GET() {
 
 
     // ======================================
-    // NORMALIZE 1 MINUTE DATA
+    // NORMALIZE 1m DATA
     // ======================================
 
     const all1m =
       nifty1m.quotes
         .filter(
-          (candle) =>
+          candle =>
             candle.open != null &&
             candle.high != null &&
             candle.low != null &&
             candle.close != null
         )
         .map(
-          (candle) => ({
+          candle => ({
             time:
               candle.date,
 
@@ -146,58 +186,109 @@ export async function GET() {
         );
 
 
-    // ======================================
-    // FRIDAY SESSION START
-    // ======================================
+    const replayStartTime =
+      replayStart.getTime();
 
-    const fridayStart =
-      new Date(
-        "2026-08-21T09:15:00+05:30"
-      ).getTime();
+    const replayEndTime =
+      replayEnd.getTime();
 
 
     // ======================================
-    // SPLIT WARM-UP + FRIDAY REPLAY DATA
+    // WARM-UP DATA
     // ======================================
 
-    const warmup5m =
+    const previous5m =
       all5m.filter(
-        (candle) =>
+        candle =>
           new Date(
             candle.time
           ).getTime() <
-          fridayStart
+          replayStartTime
       );
 
+
+    const previous1m =
+      all1m.filter(
+        candle =>
+          new Date(
+            candle.time
+          ).getTime() <
+          replayStartTime
+      );
+
+
+    // Keep only enough recent history
+    // for indicators / structure.
+
+    const warmup5m =
+      previous5m.slice(-75);
+
+    const warmup1m =
+      previous1m.slice(-375);
+
+
+    // ======================================
+    // SELECTED REPLAY SESSION
+    // ======================================
 
     const candles5m =
       all5m.filter(
-        (candle) =>
-          new Date(
-            candle.time
-          ).getTime() >=
-          fridayStart
-      );
+        candle => {
 
+          const time =
+            new Date(
+              candle.time
+            ).getTime();
 
-    const warmup1m =
-      all1m.filter(
-        (candle) =>
-          new Date(
-            candle.time
-          ).getTime() <
-          fridayStart
+          return (
+            time >= replayStartTime &&
+            time <= replayEndTime
+          );
+        }
       );
 
 
     const candles1m =
       all1m.filter(
-        (candle) =>
-          new Date(
-            candle.time
-          ).getTime() >=
-          fridayStart
+        candle => {
+
+          const time =
+            new Date(
+              candle.time
+            ).getTime();
+
+          return (
+            time >= replayStartTime &&
+            time <= replayEndTime
+          );
+        }
       );
+
+
+    // ======================================
+    // VALIDATE SELECTED DAY
+    // ======================================
+
+    if (
+      candles5m.length === 0 ||
+      candles1m.length === 0
+    ) {
+
+      return NextResponse.json(
+        {
+          success: false,
+
+          date:
+            requestedDate,
+
+          error:
+            "No market candles were found for the selected replay date. It may be a weekend or market holiday.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
 
 
     // ======================================
@@ -209,7 +300,7 @@ export async function GET() {
       success: true,
 
       date:
-        "2026-08-21",
+        requestedDate,
 
       warmup5m,
 
@@ -227,10 +318,10 @@ export async function GET() {
         warmup1m:
           warmup1m.length,
 
-        friday5m:
+        replay5m:
           candles5m.length,
 
-        friday1m:
+        replay1m:
           candles1m.length,
       },
 
@@ -242,6 +333,7 @@ export async function GET() {
       "REPLAY DATA ERROR:",
       error
     );
+
 
     return NextResponse.json(
       {
@@ -256,5 +348,4 @@ export async function GET() {
     );
 
   }
-
 }
