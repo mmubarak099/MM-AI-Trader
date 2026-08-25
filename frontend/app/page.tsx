@@ -921,6 +921,17 @@ const stableSignalCountRef =
 const realStableSignalCountRef =
   useRef(0);
 
+  // ======================================
+// REAL SIGNAL CANDLE PROCESSING GUARD
+//
+// Prevent the same completed 5m candle
+// from counting more than once toward
+// signal stability.
+// ======================================
+
+const realLastProcessedCandleTimeRef =
+  useRef<string | number | null>(null);
+  
 // ======================================
 // REPLAY SIGNAL STABILITY
 // ======================================
@@ -1114,8 +1125,8 @@ const realConfirmationChecks = [
   // 5. Volume
   false,
 
-  // 6. Confidence
-  (realAIAnalysis?.confidence ?? 0) >= 50,
+// 6. Confidence
+(realAIAnalysis?.confidence ?? 0) >= 90,
 ];
 
 const realPassedConfirmations =
@@ -1318,7 +1329,14 @@ useEffect(() => {
     confirmationsReady;
 
   setQualifiedRealSignal({
-    action: qualified
+
+    candleTime:
+  realNiftyCandles[
+    realNiftyCandles.length - 1
+  ]?.time ?? null,
+
+    action: 
+    qualified
       ? v1Direction
       : "WAIT",
 
@@ -1354,11 +1372,13 @@ useEffect(() => {
   realAIAnalysis,
   multiTimeframeAnalysis,
   realPassedConfirmations,
+  realNiftyCandles,
 ]);
 
 useEffect(() => {
 
   if (
+    executionMode !== "REAL" ||
     !qualifiedRealSignal ||
     !realAIAnalysis ||
     realMarketData?.nifty?.price == null
@@ -1403,6 +1423,33 @@ useEffect(() => {
       | "BUY"
       | "SELL";
 
+      // ---------------------------------------
+// Process each completed REAL 5m candle
+// only once for signal stability
+// ---------------------------------------
+
+const realCandleTime =
+  qualifiedRealSignal.candleTime;
+
+
+if (
+  realCandleTime == null
+) {
+  return;
+}
+
+
+if (
+  realLastProcessedCandleTimeRef.current ===
+  realCandleTime
+) {
+  return;
+}
+
+
+realLastProcessedCandleTimeRef.current =
+  realCandleTime;
+
   // ---------------------------------------
   // Real signal stability counter
   // ---------------------------------------
@@ -1429,7 +1476,10 @@ useEffect(() => {
       direction: candidateDirection,
       stability:
         realStableSignalCountRef.current,
-      required: 2,
+      required:
+  candidateDirection === "SELL"
+    ? 1
+    : 2,
       confidence:
         realAIAnalysis.confidence,
       confirmations:
@@ -1443,12 +1493,25 @@ useEffect(() => {
   // Wait for two stable qualified cycles
   // ---------------------------------------
 
-  if (
-    realStableSignalCountRef.current < 2
-  ) {
-    return;
-  }
+// ---------------------------------------
+// Directional stability requirement
+//
+// BUY  -> 2 qualified observations
+// SELL -> 1 qualified observation
+// ---------------------------------------
 
+const requiredRealStability =
+  candidateDirection === "SELL"
+    ? 1
+    : 2;
+
+
+if (
+  realStableSignalCountRef.current <
+    requiredRealStability
+) {
+  return;
+}
   console.log(
     "✅ REAL STABLE SIGNAL CONFIRMED:",
     {
@@ -1748,7 +1811,10 @@ console.log(
       stability:
         replayStableSignalCountRef.current,
 
-      required: 2,
+      required:
+      direction === "SELL"
+       ? 1
+       : 2,
 
       confidence:
         replayAIAnalysis.confidence,
