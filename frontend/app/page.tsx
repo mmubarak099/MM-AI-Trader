@@ -3117,10 +3117,17 @@ if (
   // SIGNAL CONFIRMED
   // =====================================
 
-  if (
-    stableSignalCountRef.current >= 2
-  ) {
+const requiredSignalStability =
+  analysis.action === "SELL"
+    ? 1
+    : 2;
 
+
+if (
+  stableSignalCountRef.current >=
+    requiredSignalStability
+) {
+  
     console.log(
       "✅ STABLE SIGNAL CONFIRMED:",
       {
