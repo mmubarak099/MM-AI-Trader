@@ -1763,9 +1763,16 @@ console.log(
   // STABLE REPLAY SIGNAL CONFIRMED
   // ======================================
 
-  if (
-    replayStableSignalCountRef.current >= 2
-  ) {
+const requiredReplayStability =
+  replayAIAnalysis.action === "SELL"
+    ? 1
+    : 2;
+
+
+if (
+  replayStableSignalCountRef.current >=
+    requiredReplayStability
+) {
 
     console.log(
       "✅ REPLAY STABLE SIGNAL CONFIRMED:",
@@ -3127,7 +3134,7 @@ if (
   stableSignalCountRef.current >=
     requiredSignalStability
 ) {
-  
+
     console.log(
       "✅ STABLE SIGNAL CONFIRMED:",
       {
