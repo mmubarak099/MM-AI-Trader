@@ -932,6 +932,30 @@ const realStableSignalCountRef =
 const realLastProcessedCandleTimeRef =
   useRef<string | number | null>(null);
   
+  // ======================================
+// REAL OPPORTUNITY HISTORY
+//
+// Diagnostic only.
+// Records REAL qualified opportunities
+// without changing signal/trade logic.
+// ======================================
+
+const realOpportunityHistoryRef =
+  useRef<
+    {
+      candleTime: string | number | null;
+      action: "BUY" | "SELL";
+      price: number;
+      confidence: number;
+      confirmations: number;
+      mtfDirection: string;
+      entryState: string;
+      stability: number;
+      requiredStability: number;
+      tradePlanTriggered: boolean;
+    }[]
+  >([]);
+
 // ======================================
 // REPLAY SIGNAL STABILITY
 // ======================================
@@ -1505,6 +1529,44 @@ const requiredRealStability =
     ? 1
     : 2;
 
+    realOpportunityHistoryRef.current.push({
+  candleTime:
+    realCandleTime,
+
+  action:
+    candidateDirection,
+
+  price:
+    realMarketData.nifty.price,
+
+  confidence:
+    realAIAnalysis.confidence,
+
+  confirmations:
+    realPassedConfirmations,
+
+  mtfDirection:
+    multiTimeframeAnalysis?.direction ?? "WAIT",
+
+  entryState:
+    multiTimeframeAnalysis?.entryState ?? "UNKNOWN",
+
+  stability:
+    realStableSignalCountRef.current,
+
+  requiredStability:
+    requiredRealStability,
+
+  tradePlanTriggered:
+    realStableSignalCountRef.current >=
+      requiredRealStability,
+});
+
+
+console.log(
+  "🌐 REAL OPPORTUNITY HISTORY:",
+  realOpportunityHistoryRef.current
+);
 
 if (
   realStableSignalCountRef.current <
@@ -3214,13 +3276,14 @@ if (
       }
     );
 
-setTradeAlert({
-  type: "INFO",
-  title: "Signal Confirmed",
-  message: `${analysis.action} signal confirmed at ${analysis.confidence}% confidence with ${passedConfirmations}/6 confirmations.`,
-});
-
 if (executionMode === "SIMULATOR") {
+
+  setTradeAlert({
+    type: "INFO",
+    title: "Signal Confirmed",
+    message: `${analysis.action} signal confirmed at ${analysis.confidence}% confidence with ${passedConfirmations}/6 confirmations.`,
+  });
+
   processTradeEngine(
     analysis,
     newNifty.price,
@@ -3494,17 +3557,43 @@ if (detectedPattern !== "No Pattern") {
           </p>
 
 <MarketOverview
-  nifty={nifty.price}
-  bankNifty={bankNifty.price}
-  niftyChange={nifty.change}
-  bankNiftyChange={bankNifty.change}
+  nifty={
+    executionMode === "REAL" &&
+    realMarketData?.nifty?.price != null
+      ? realMarketData.nifty.price
+      : nifty.price
+  }
+
+  bankNifty={
+    executionMode === "REAL" &&
+    realMarketData?.bankNifty?.price != null
+      ? realMarketData.bankNifty.price
+      : bankNifty.price
+  }
+
+  niftyChange={
+    executionMode === "REAL" &&
+    realMarketData?.nifty?.change != null
+      ? realMarketData.nifty.change
+      : nifty.change
+  }
+
+  bankNiftyChange={
+    executionMode === "REAL" &&
+    realMarketData?.bankNifty?.change != null
+      ? realMarketData.bankNifty.change
+      : bankNifty.change
+  }
 />
 
 {realMarketData && (
-  <div className="mt-3 p-3 border rounded-lg">
-    <div className="font-semibold mb-2">
-      🌐 Real Market Data — Test Feed
-    </div>
+  <details className="mt-3 border border-gray-800 rounded-lg bg-gray-900">
+
+    <summary className="px-3 py-3 cursor-pointer font-semibold text-gray-200">
+      🌐 Real Market Data — Diagnostics
+    </summary>
+
+    <div className="p-3 pt-1">
 
     <div>
       NIFTY 50:{" "}
@@ -3871,7 +3960,131 @@ if (detectedPattern !== "No Pattern") {
     </strong>
   </div>
 )}
+
+<div className="mt-4 pt-3 border-t border-gray-800">
+
+  <div className="font-semibold mb-2">
+    REAL Opportunity History
   </div>
+
+  <div>
+    Qualified opportunities recorded:{" "}
+    <strong>
+      {realOpportunityHistoryRef.current.length}
+    </strong>
+  </div>
+
+  {realOpportunityHistoryRef.current.length === 0 ? (
+
+    <div className="mt-2 text-gray-400">
+      No qualified REAL opportunities recorded
+      during this session.
+    </div>
+
+  ) : (
+
+    <div className="mt-2 space-y-2">
+
+      {realOpportunityHistoryRef.current.map(
+        (item, index) => (
+
+          <div
+            key={`${item.candleTime}-${index}`}
+            className="p-2 border border-gray-800 rounded"
+          >
+            <div>
+              Opportunity #{index + 1}
+            </div>
+
+            <div>
+              Candle:{" "}
+              <strong>
+                {item.candleTime != null
+                  ? new Date(
+                      item.candleTime
+                    ).toLocaleTimeString(
+                      "en-IN",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone:
+                          "Asia/Kolkata",
+                      }
+                    )
+                  : "--"}
+              </strong>
+            </div>
+
+            <div>
+              Action:{" "}
+              <strong>{item.action}</strong>
+            </div>
+
+            <div>
+              Price:{" "}
+              <strong>
+                {item.price.toFixed(2)}
+              </strong>
+            </div>
+
+            <div>
+              Confidence:{" "}
+              <strong>
+                {item.confidence}%
+              </strong>
+            </div>
+
+            <div>
+              Confirmations:{" "}
+              <strong>
+                {item.confirmations} / 6
+              </strong>
+            </div>
+
+            <div>
+              MTF:{" "}
+              <strong>
+                {item.mtfDirection}
+              </strong>
+            </div>
+
+            <div>
+              Entry State:{" "}
+              <strong>
+                {item.entryState}
+              </strong>
+            </div>
+
+            <div>
+              Stability:{" "}
+              <strong>
+                {item.stability} /{" "}
+                {item.requiredStability}
+              </strong>
+            </div>
+
+            <div>
+              Trade Plan Triggered:{" "}
+              <strong>
+                {item.tradePlanTriggered
+                  ? "YES"
+                  : "NO"}
+              </strong>
+            </div>
+
+          </div>
+
+        )
+      )}
+
+    </div>
+
+  )}
+
+</div>
+
+  </div>
+   </details>
 )}
 
 {/* ================= EXECUTION MODE ================= */}
@@ -3879,7 +4092,7 @@ if (detectedPattern !== "No Pattern") {
 <div className="mt-4 p-3 border border-gray-800 rounded-lg bg-gray-900">
 
   <div className="flex items-center justify-between gap-4">
-
+  
     <div>
       <div className="text-sm font-semibold">
         Execution Mode
