@@ -3571,19 +3571,19 @@ if (detectedPattern !== "No Pattern") {
       : bankNifty.price
   }
 
-  niftyChange={
-    executionMode === "REAL" &&
-    realMarketData?.nifty?.change != null
-      ? realMarketData.nifty.change
-      : nifty.change
-  }
+niftyChange={
+  executionMode === "REAL" &&
+  realMarketData?.nifty?.changePercent != null
+    ? realMarketData.nifty.changePercent
+    : nifty.change
+}
 
-  bankNiftyChange={
-    executionMode === "REAL" &&
-    realMarketData?.bankNifty?.change != null
-      ? realMarketData.bankNifty.change
-      : bankNifty.change
-  }
+bankNiftyChange={
+  executionMode === "REAL" &&
+  realMarketData?.bankNifty?.changePercent != null
+    ? realMarketData.bankNifty.changePercent
+    : bankNifty.change
+}
 />
 
 {realMarketData && (
