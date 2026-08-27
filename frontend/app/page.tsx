@@ -952,7 +952,8 @@ const realOpportunityHistoryRef =
       entryState: string;
       stability: number;
       requiredStability: number;
-      tradePlanTriggered: boolean;
+      stabilityPassed: boolean;
+      tradePlanCreated: boolean;
     }[]
   >([]);
 
@@ -1557,9 +1558,10 @@ const requiredRealStability =
   requiredStability:
     requiredRealStability,
 
-  tradePlanTriggered:
-    realStableSignalCountRef.current >=
-      requiredRealStability,
+stabilityPassed:
+  realStableSignalCountRef.current >=
+    requiredRealStability,
+    tradePlanCreated: false,
 });
 
 
@@ -2839,6 +2841,28 @@ source,
     ),
   });
 
+  // ======================================
+  // REAL TRADE PLAN DIAGNOSTIC
+  // ======================================
+
+  if (source === "REAL") {
+
+  const latestRealOpportunity =
+    realOpportunityHistoryRef.current[
+      realOpportunityHistoryRef.current.length - 1
+    ];
+
+  if (latestRealOpportunity) {
+    latestRealOpportunity.tradePlanCreated =
+      true;
+  }
+
+  console.log(
+    "✅ REAL TRADE PLAN CREATED:",
+    latestRealOpportunity
+  );
+}
+
   setSignalLocked(true);
 
   setSignalCreatedAt(new Date());
@@ -4064,9 +4088,9 @@ bankNiftyChange={
             </div>
 
             <div>
-              Trade Plan Triggered:{" "}
+              Stability Passed:{" "}
               <strong>
-                {item.tradePlanTriggered
+                {item.stabilityPassed
                   ? "YES"
                   : "NO"}
               </strong>
