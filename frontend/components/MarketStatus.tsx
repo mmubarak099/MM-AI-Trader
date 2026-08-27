@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getNseMarketStatus } from "../lib/marketSession";
 
 
 export default function MarketStatus() {
@@ -34,57 +35,19 @@ const indiaTime = time
   : null;
 
 
-  const hours = indiaTime ? indiaTime.getHours() : 0;
-  const minutes = indiaTime ? indiaTime.getMinutes() : 0;
+ const marketStatus =
+  time
+    ? getNseMarketStatus(time)
+    : null;
 
+const status =
+  marketStatus?.status ?? "";
 
-  let status = "";
-  let color = "";
-  let session = "";
+const color =
+  marketStatus?.color ?? "";
 
-
-  if (
-    hours < 9 ||
-    (hours === 9 && minutes < 0)
-  ) {
-
-    status = "🔵 MARKET NOT STARTED";
-    color = "text-blue-400";
-    session = "Pre-market";
-
-  }
-
-  else if (
-  hours === 9 &&
-  minutes < 15
-) {
-
-  status = "🟡 PRE-OPEN SESSION";
-  color = "text-yellow-400";
-  session = "Opening Session";
-
-}
-
-  else if (
-  (hours > 9 || (hours === 9 && minutes >= 15)) &&
-  (hours < 15 || (hours === 15 && minutes < 30))
-)
-   {
-
-    status = "🟢 LIVE TRADING";
-    color = "text-green-400";
-    session = "Regular trading";
-
-  }
-
-  else {
-
-    status = "🔴 MARKET CLOSED";
-    color = "text-red-400";
-    session = "Market ended";
-
-  }
-
+const session =
+  marketStatus?.session ?? "";
 
   return (
 
