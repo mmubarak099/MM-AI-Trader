@@ -954,6 +954,7 @@ const realOpportunityHistoryRef =
       requiredStability: number;
       stabilityPassed: boolean;
       tradePlanCreated: boolean;
+      tradePlanRejectionReason: string | null;
     }[]
   >([]);
 
@@ -1559,6 +1560,7 @@ stabilityPassed:
   realStableSignalCountRef.current >=
     requiredRealStability,
     tradePlanCreated: false,
+    tradePlanRejectionReason: null,
 });
 
 
@@ -2658,6 +2660,26 @@ function processTradeEngine(
   | "REPLAY"
 ) {
 
+  // REAL trade-plan diagnostic only
+const recordRealTradePlanRejection = (
+  reason: string
+) => {
+  if (source !== "REAL") {
+    return;
+  }
+
+  const latestRealOpportunity =
+    realOpportunityHistoryRef.current[
+      realOpportunityHistoryRef.current.length - 1
+    ];
+
+  if (latestRealOpportunity) {
+    latestRealOpportunity.tradePlanCreated = false;
+    latestRealOpportunity.tradePlanRejectionReason =
+      reason;
+  }
+};
+
   console.log("========== TRADE ENGINE CHECK ==========");
   console.log("Action:", analysis.action);
   console.log("Confidence:", analysis.confidence);
@@ -2675,28 +2697,37 @@ function processTradeEngine(
   );
 
   // 1. Existing trade/signal protection
-  if (
-    signalLocked ||
-    tradeCooldown ||
-    currentSignal ||
-    activeTrade
-  ) {
-    console.log(
-      "❌ TRADE REJECTED: Existing signal/trade/cooldown"
-    );
-    return;
-  }
+if (
+  signalLocked ||
+  tradeCooldown ||
+  currentSignal ||
+  activeTrade
+) {
+  console.log(
+    "❌ TRADE REJECTED: Existing signal/trade/cooldown"
+  );
 
+  recordRealTradePlanRejection(
+    "Existing signal, active trade, or cooldown."
+  );
+
+  return;
+}
   // 2. Only BUY / SELL can create trades
-  if (
-    analysis.action !== "BUY" &&
-    analysis.action !== "SELL"
-  ) {
-    console.log(
-      "❌ TRADE REJECTED: Action is not BUY/SELL"
-    );
-    return;
-  }
+if (
+  analysis.action !== "BUY" &&
+  analysis.action !== "SELL"
+) {
+  console.log(
+    "❌ TRADE REJECTED: Action is not BUY/SELL"
+  );
+
+  recordRealTradePlanRejection(
+    "Action is not BUY or SELL."
+  );
+
+  return;
+}
 
   // 2B. Final AI decision safety lock
 // Only the final V1 BUY/SELL decision may reach trade creation.
@@ -2710,19 +2741,25 @@ if (analysis.action !== "BUY" && analysis.action !== "SELL") {
       probability: analysis.probability,
     }
   );
-
+recordRealTradePlanRejection(
+  "Final V1 action is not executable."
+);
   return;
 }
 
   // 3. Confidence threshold
-  if (analysis.confidence < 70) {
-    console.log(
-      "❌ TRADE REJECTED: Confidence below 70",
-      analysis.confidence
-    );
-    return;
-  }
+if (analysis.confidence < 70) {
+  console.log(
+    "❌ TRADE REJECTED: Confidence below 70",
+    analysis.confidence
+  );
 
+  recordRealTradePlanRejection(
+    `Confidence below 70: ${analysis.confidence}%`
+  );
+
+  return;
+}
   // Reject weak market conditions even when confidence is high
 const directionAlignedStrongMarket =
   (
@@ -2760,6 +2797,10 @@ if (
     }
   );
 
+  recordRealTradePlanRejection(
+  `Market conditions unsuitable: regime=${analysis.marketRegime}, condition=${analysis.marketCondition}, risk=${analysis.riskLevel}, advice=${analysis.advice}`
+);
+
   return;
 }
   // 4. Duplicate signal protection
@@ -2771,6 +2812,10 @@ if (
     console.log(
       "❌ TRADE REJECTED: Duplicate signal still valid"
     );
+
+    recordRealTradePlanRejection(
+  "Duplicate signal is still valid."
+);
     return;
   }
 
@@ -2792,12 +2837,17 @@ console.log("🚨 CREATING TRADE:",
     analysis.confidence
   );
 
-  if (!plan) {
-    console.log(
-      "❌ TRADE REJECTED: createTradePlan returned null"
-    );
-    return;
-  }
+if (!plan) {
+  console.log(
+    "❌ TRADE REJECTED: createTradePlan returned null"
+  );
+
+  recordRealTradePlanRejection(
+    "createTradePlan returned null."
+  );
+
+  return;
+}
 
   console.log(
     "🚨 NEW TRADE PLAN CREATED:",
@@ -2854,6 +2904,8 @@ source,
     latestRealOpportunity.tradePlanCreated =
       true;
   }
+  latestRealOpportunity.tradePlanRejectionReason =
+  null;
 
   console.log(
     "✅ REAL TRADE PLAN CREATED:",
@@ -4125,7 +4177,22 @@ bankNiftyChange={
                   : "NO"}
               </strong>
             </div>
-
+          <div>
+  Trade Plan Created:{" "}
+  <strong>
+    {item.tradePlanCreated
+      ? "YES"
+      : "NO"}
+  </strong>
+</div>
+{item.tradePlanRejectionReason && (
+  <div>
+    Trade Plan Rejection:{" "}
+    <strong>
+      {item.tradePlanRejectionReason}
+    </strong>
+  </div>
+)}
           </div>
 
         )
