@@ -25,9 +25,15 @@ export function analyzeMarket(
   tradeQuality: string;
   opportunityRating: string;
   probability: number;
-  marketRegime: string;
-  action: string;
-  reasons: string[];
+marketRegime: string;
+action: string;
+
+pattern: MarketInput["pattern"];
+marketStructure: MarketInput["marketStructure"];
+breakout: MarketInput["breakout"];
+volumeStrength: MarketInput["volumeStrength"];
+
+reasons: string[];
   marketCondition: string;
   riskLevel: string;
   advice: string;
@@ -63,9 +69,7 @@ export function analyzeMarket(
       (data.price - data.previousPrice).toFixed(2)
     );
 
-
-
-  let score = 50;
+let score = 50;
 
   let reasons: string[] = [];
   let trendScore = 0;
@@ -1504,37 +1508,6 @@ else {
 
 }
 
-// ===============================
-// Trade Opportunity Rating
-// ===============================
-
-let opportunityRating = "Poor";
-
-if (
-  score >= 90 &&
-  tradeQuality === "A+"
-) {
-
-  opportunityRating = "Excellent";
-
-}
-
-else if (
-  score >= 75 &&
-  tradeQuality === "A"
-) {
-
-  opportunityRating = "Good";
-
-}
-
-else if (
-  score >= 60
-) {
-
-  opportunityRating = "Average";
-
-}
 
 let summary = "";
 
@@ -1544,13 +1517,39 @@ if (action === "BUY") {
     "The market is showing bullish characteristics with positive momentum. Trend and technical indicators support a potential buying opportunity while maintaining disciplined risk management.";
 
 }
+else if (action === "SELL") {
 
-// A+ setup
+  summary =
+    "The market is showing bearish characteristics with increasing selling pressure. Current technical indicators suggest caution and favor short-selling opportunities.";
+
+}
+else if (action === "WATCH") {
+
+  summary =
+    "The market is developing a possible trading setup, but confirmation from additional price action is recommended before entering a position.";
+
+}
+else {
+
+  summary =
+    "The market is currently moving sideways with mixed technical signals. Waiting for a clearer opportunity is the recommended approach.";
+
+}
+
+
+// ===============================
+// A+ BUY Setup
+// ===============================
+
 if (
+  action === "BUY" &&
   confirmationScore >= 90 &&
   score >= 90
 ) {
-  advice = "A+ setup detected. Aggressive position sizing allowed.";
+
+  advice =
+    "A+ setup detected. Aggressive position sizing allowed.";
+
   riskLevel = "Very Low";
 
   reasons.push(
@@ -1558,38 +1557,25 @@ if (
   );
 }
 
-else if (action === "SELL") {
 
-  summary =
-    "The market is showing bearish characteristics with increasing selling pressure. Current technical indicators suggest caution and favor short-selling opportunities.";
+// ===============================
+// A+ SELL Setup
+// ===============================
 
-}
-
-// A+ SELL setup
 if (
+  action === "SELL" &&
   bearishConfirmations >= 5 &&
   score <= 10
 ) {
-  advice = "A+ SELL setup detected. Aggressive position sizing allowed.";
+
+  advice =
+    "A+ SELL setup detected. Aggressive position sizing allowed.";
+
   riskLevel = "Very Low";
 
   reasons.push(
     "Exceptional bearish confluence across all major indicators."
   );
-}
-
-else if (action === "WATCH") {
-
-  summary =
-    "The market is developing a possible trading setup, but confirmation from additional price action is recommended before entering a position.";
-
-}
-
-else {
-
-  summary =
-    "The market is currently moving sideways with mixed technical signals. Waiting for a clearer opportunity is the recommended approach.";
-
 }
 
 // ===============================
@@ -2173,6 +2159,62 @@ else if (
 
 }
 
+// ===============================
+// Final Trade Opportunity Rating
+// ===============================
+
+let opportunityRating = "Poor";
+
+if (action === "BUY") {
+
+  if (
+    score >= 90 &&
+    tradeQuality === "A+"
+  ) {
+    opportunityRating = "Excellent";
+  }
+  else if (
+    score >= 75 &&
+    tradeQuality === "A"
+  ) {
+    opportunityRating = "Good";
+  }
+  else if (
+    score >= 60
+  ) {
+    opportunityRating = "Average";
+  }
+
+}
+
+else if (action === "SELL") {
+
+  if (
+    score <= 10 &&
+    tradeQuality === "A+"
+  ) {
+    opportunityRating = "Excellent";
+  }
+  else if (
+    score <= 25 &&
+    tradeQuality === "A"
+  ) {
+    opportunityRating = "Good";
+  }
+  else if (
+    score <= 40
+  ) {
+    opportunityRating = "Average";
+  }
+
+}
+
+else if (action === "WATCH") {
+
+  opportunityRating = "Average";
+
+}
+
 return {
   trend,
   confidence,
@@ -2182,6 +2224,12 @@ return {
 
   marketRegime,
   action,
+
+pattern: data.pattern,
+marketStructure: data.marketStructure,
+breakout: data.breakout,
+volumeStrength: data.volumeStrength,
+
   reasons,
   marketCondition,
   riskLevel,
