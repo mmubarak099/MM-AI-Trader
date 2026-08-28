@@ -167,233 +167,63 @@ export function validateExecution(
   }
 
 
-  // ======================================
-  // REAL MARKET VALIDATION
-  // ======================================
+// ======================================
+// REAL MARKET VALIDATION
+// ======================================
 
-  if (
-    input.source === "REAL"
-  ) {
+if (input.source === "REAL") {
 
+  const oppositeDirection =
+    (
+      input.lockedAction === "BUY" &&
+      input.realV1Action === "SELL"
+    ) ||
+    (
+      input.lockedAction === "SELL" &&
+      input.realV1Action === "BUY"
+    );
 
-    if (
-      input.realQualified !== true
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Real signal is no longer qualified.",
-      };
-    }
-
-
-    if (
-      input.realQualifiedAction !==
-      input.lockedAction
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Real qualified direction no longer matches the locked signal.",
-      };
-    }
-
-
-    if (
-      input.realV1Action !==
-      input.lockedAction
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Real V1 direction no longer matches the locked signal.",
-      };
-    }
-
-
-    if (
-      input.mtfDirection !==
-      input.lockedAction
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Multi-timeframe direction no longer matches the locked signal.",
-      };
-    }
-
-
-    if (
-      input.mtfEntryState !==
-      "READY"
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Multi-timeframe entry is no longer ready.",
-      };
-    }
+  if (oppositeDirection) {
+    return {
+      allowed: false,
+      reason:
+        "Real V1 direction is now opposite to the locked signal.",
+    };
   }
+}
 
+// ======================================
+// REPLAY VALIDATION
+// ======================================
 
-  // ======================================
-  // SIMULATOR VALIDATION
-  // ======================================
+if (input.source === "REPLAY") {
 
-  if (
-    input.source === "SIMULATOR"
-  ) {
+  const oppositeDirection =
+    (
+      input.lockedAction === "BUY" &&
+      input.replayV1Action === "SELL"
+    ) ||
+    (
+      input.lockedAction === "SELL" &&
+      input.replayV1Action === "BUY"
+    );
 
-
-    const oppositeDirection =
-      (
-        input.lockedAction ===
-          "BUY" &&
-        input.simulatorAction ===
-          "SELL"
-      ) ||
-      (
-        input.lockedAction ===
-          "SELL" &&
-        input.simulatorAction ===
-          "BUY"
-      );
-
-
-    if (
-      oppositeDirection
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Simulator direction is now opposite to the locked signal.",
-      };
-    }
-
-
-    const unsafeMarket =
-      input.simulatorRiskLevel ===
-        "High" ||
-      input.simulatorMarketCondition ===
-        "Sideways Market" ||
-      input.simulatorAdvice ===
-        "Wait for a clearer setup";
-
-
-    if (
-      unsafeMarket
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Simulator market conditions are no longer suitable.",
-      };
-    }
+  if (oppositeDirection) {
+    return {
+      allowed: false,
+      reason:
+        "Replay V1 direction is now opposite to the locked signal.",
+    };
   }
+}
 
+// ======================================
+// VALIDATION PASSED
+// ======================================
 
-  // ======================================
-  // REPLAY VALIDATION
-  // ======================================
-
-  if (
-    input.source === "REPLAY"
-  ) {
-
-
-    // The historical candle must still
-    // represent a qualified setup.
-
-    if (
-      input.replayQualified !== true
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Replay signal is no longer qualified.",
-      };
-    }
-
-
-    // Qualified Replay direction must
-    // still match the locked Trade Plan.
-
-    if (
-      input.replayQualifiedAction !==
-      input.lockedAction
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Replay qualified direction no longer matches the locked signal.",
-      };
-    }
-
-
-    // Replay V1 must still agree with
-    // the locked direction.
-
-    if (
-      input.replayV1Action !==
-      input.lockedAction
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Replay V1 direction no longer matches the locked signal.",
-      };
-    }
-
-
-    // Multi-timeframe direction must
-    // still agree.
-
-    if (
-      input.replayMtfDirection !==
-      input.lockedAction
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Replay multi-timeframe direction no longer matches the locked signal.",
-      };
-    }
-
-
-    // Entry must still be READY.
-
-    if (
-      input.replayMtfEntryState !==
-      "READY"
-    ) {
-
-      return {
-        allowed: false,
-        reason:
-          "Replay multi-timeframe entry is no longer ready.",
-      };
-    }
-  }
-
-
-  // ======================================
-  // VALIDATION PASSED
-  // ======================================
-
-  return {
-    allowed: true,
-    reason:
-      "Execution validation passed.",
-  };
+return {
+  allowed: true,
+  reason:
+    "Execution validation passed.",
+};
 }

@@ -1128,31 +1128,27 @@ const [analysis1m, setAnalysis1m] =
   const [qualifiedRealSignal, setQualifiedRealSignal] =
   useState<any>(null);
 
-const realConfirmationChecks = [
-
-  // 1. Trend
-  realTrend === "Bullish" ||
-  realTrend === "Bearish",
-
-  // 2. Pattern
-  realPattern === "Bullish Engulfing" ||
-  realPattern === "Bearish Engulfing" ||
-  realPattern === "Hammer",
-
-  // 3. Structure
-  realMarketStructure === "UPTREND" ||
-  realMarketStructure === "DOWNTREND",
-
-  // 4. Breakout
-  realBreakout === "BREAKOUT" ||
-  realBreakout === "BREAKDOWN",
-
-  // 5. Volume
-  false,
-
-// 6. Confidence
-(realAIAnalysis?.confidence ?? 0) >= 90,
-];
+const realConfirmationChecks =
+  realAIAnalysis?.action === "BUY"
+    ? [
+        realTrend === "Bullish",
+        realPattern === "Bullish Engulfing" ||
+          realPattern === "Hammer",
+        realMarketStructure === "UPTREND",
+        realBreakout === "BREAKOUT",
+        false,
+        (realAIAnalysis?.confidence ?? 0) >= 90,
+      ]
+    : realAIAnalysis?.action === "SELL"
+    ? [
+        realTrend === "Bearish",
+        realPattern === "Bearish Engulfing",
+        realMarketStructure === "DOWNTREND",
+        realBreakout === "BREAKDOWN",
+        false,
+        (realAIAnalysis?.confidence ?? 0) >= 90,
+      ]
+    : [];
 
 const realPassedConfirmations =
   realConfirmationChecks.filter(Boolean).length;
@@ -1200,10 +1196,10 @@ useEffect(() => {
     return;
   }
 
-  const previousCandle =
-    realNiftyCandles[
-      realNiftyCandles.length - 2
-    ];
+const currentCandle =
+  realNiftyCandles[
+    realNiftyCandles.length - 1
+  ];
 
    console.log("🌐 REAL VALUES SENT TO V1", {
   realTrend,
@@ -1216,8 +1212,9 @@ useEffect(() => {
 });
 
   const analysis = analyzeMarketV1({
-    price: realMarketData.nifty.price,
-    previousPrice: previousCandle.close,
+
+price: currentCandle.close,
+previousPrice: currentCandle.open,
     trend: realTrend,
     rsi: realRSI,
     ema20: realEMA20,
@@ -2841,10 +2838,10 @@ source,
     ),
   });
 
-  // ======================================
+    // ======================================
   // REAL TRADE PLAN DIAGNOSTIC
   // ======================================
-
+  
   if (source === "REAL") {
 
   const latestRealOpportunity =
@@ -2956,8 +2953,11 @@ if (remaining <= 0) {
   signalCreatedAt,
 ]);
 
-  useEffect(() => {
+useEffect(() => {
 
+    if (executionMode !== "SIMULATOR") {
+      return;
+    }
 
     const timer = setInterval(() => {
 
@@ -3212,7 +3212,7 @@ const candidateEligible =
     isSellCandidate
   ) &&
   analysis.confidence >= 90 &&
-  passedConfirmations >= 3;
+  passedConfirmations >= 4;
 
 
 // ---------------------------------------
