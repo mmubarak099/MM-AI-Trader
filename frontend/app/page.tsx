@@ -1611,6 +1611,7 @@ processTradeEngine(
 );
 }
 
+
 realStableSignalDirectionRef.current =
   null;
 
@@ -3212,7 +3213,7 @@ const candidateEligible =
     isSellCandidate
   ) &&
   analysis.confidence >= 90 &&
-  passedConfirmations >= 4;
+  passedConfirmations >= 4; 
 
 
 // ---------------------------------------
@@ -3539,11 +3540,40 @@ if (detectedPattern !== "No Pattern") {
   realMarketData?.nifty?.price,
 ]);
 
+// ======================================
+// REAL ACTIVE TRADE UPDATE
+// ======================================
 
+useEffect(() => {
 
+  if (executionMode !== "REAL") {
+    return;
+  }
 
+  if (
+    !activeTrade ||
+    activeTrade.source !== "REAL"
+  ) {
+    return;
+  }
 
+  const activeTradePrice =
+    realMarketData?.nifty?.price;
 
+  if (activeTradePrice == null) {
+    return;
+  }
+
+  processActiveTradeUpdate(
+    activeTrade,
+    activeTradePrice
+  );
+
+}, [
+  executionMode,
+  activeTrade,
+  realMarketData?.nifty?.price,
+]);
 
   return (
 
