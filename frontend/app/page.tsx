@@ -2903,10 +2903,10 @@ source,
   if (latestRealOpportunity) {
     latestRealOpportunity.tradePlanCreated =
       true;
-  }
+
   latestRealOpportunity.tradePlanRejectionReason =
   null;
-
+}
   console.log(
     "✅ REAL TRADE PLAN CREATED:",
     latestRealOpportunity

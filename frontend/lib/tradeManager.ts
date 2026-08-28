@@ -533,8 +533,15 @@ if (
 // Final Stop Loss Check
 //--------------------------------------------------
 
+// Prevent a newly moved target stop from triggering
+// on the same price update that hit the target.
+const targetHitThisUpdate =
+  (hitTarget1 && !trade.target1Hit) ||
+  (hitTarget2 && !trade.target2Hit);
+
 const hitStopLoss =
   status !== "CLOSED" &&
+  !targetHitThisUpdate &&
   (
     trade.action === "BUY"
       ? currentPrice <= stopLoss
