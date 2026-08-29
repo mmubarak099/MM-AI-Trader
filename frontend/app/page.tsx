@@ -3653,44 +3653,76 @@ useEffect(() => {
 
           </h2>
 
+<div className="mt-1 mb-5">
+
+  <div className="flex items-end justify-between gap-4 mb-4">
+
+    <div>
+      <p className="text-xs uppercase tracking-[0.18em] text-blue-400/80 font-semibold">
+        Live Trading Workspace
+      </p>
+
+      <p className="text-slate-400 mt-1 text-sm">
+        AI-powered intraday market intelligence and execution monitoring.
+      </p>
+    </div>
+
+    <div className="hidden md:flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2">
+
+      <span
+        className={`w-2 h-2 rounded-full ${
+          executionMode === "REAL"
+            ? "bg-emerald-400"
+            : executionMode === "REPLAY"
+            ? "bg-purple-400"
+            : "bg-blue-400"
+        }`}
+      />
+
+      <span className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+        {executionMode} MODE
+      </span>
+
+    </div>
+
+  </div>
 
 
+  <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/70 p-1 shadow-[0_10px_35px_rgba(0,0,0,0.18)]">
 
-          <p className="text-gray-400 mt-2">
+    <MarketOverview
+      nifty={
+        executionMode === "REAL" &&
+        realMarketData?.nifty?.price != null
+          ? realMarketData.nifty.price
+          : nifty.price
+      }
 
-            AI-powered intraday trading assistant.
+      bankNifty={
+        executionMode === "REAL" &&
+        realMarketData?.bankNifty?.price != null
+          ? realMarketData.bankNifty.price
+          : bankNifty.price
+      }
 
-          </p>
+      niftyChange={
+        executionMode === "REAL" &&
+        realMarketData?.nifty?.changePercent != null
+          ? realMarketData.nifty.changePercent
+          : nifty.change
+      }
 
-<MarketOverview
-  nifty={
-    executionMode === "REAL" &&
-    realMarketData?.nifty?.price != null
-      ? realMarketData.nifty.price
-      : nifty.price
-  }
+      bankNiftyChange={
+        executionMode === "REAL" &&
+        realMarketData?.bankNifty?.changePercent != null
+          ? realMarketData.bankNifty.changePercent
+          : bankNifty.change
+      }
+    />
 
-  bankNifty={
-    executionMode === "REAL" &&
-    realMarketData?.bankNifty?.price != null
-      ? realMarketData.bankNifty.price
-      : bankNifty.price
-  }
+  </div>
 
-niftyChange={
-  executionMode === "REAL" &&
-  realMarketData?.nifty?.changePercent != null
-    ? realMarketData.nifty.changePercent
-    : nifty.change
-}
-
-bankNiftyChange={
-  executionMode === "REAL" &&
-  realMarketData?.bankNifty?.changePercent != null
-    ? realMarketData.bankNifty.changePercent
-    : bankNifty.change
-}
-/>
+</div>
 
 {realMarketData && (
   <details className="mt-3 border border-gray-800 rounded-lg bg-gray-900">
@@ -6042,12 +6074,12 @@ historicalScanResult.performanceAnalytics.confirmationPerformance.length > 0 && 
 
 )}
 
-<div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-4">
+<div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
 
 
   {/* ================= LEFT SIDE ================= */}
 
-  <div className="xl:col-span-2 space-y-6">
+  <div className="xl:col-span-2 space-y-6 min-w-0">
 
     <CandlestickChart
       candles={candleHistory}
@@ -6080,9 +6112,33 @@ historicalScanResult.performanceAnalytics.confirmationPerformance.length > 0 && 
 
   </div>
 
-  {/* ================= RIGHT SIDE ================= */}
+{/* ================= RIGHT SIDE ================= */}
 
-<div className="space-y-6">
+<div className="space-y-6 xl:border-l xl:border-slate-800/60 xl:pl-6">
+
+  <div className="flex items-center justify-between">
+
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.18em] text-blue-400">
+        Execution Desk
+      </p>
+
+      <h3 className="mt-1 text-lg font-bold text-white">
+        Signal & Trade Control
+      </h3>
+
+      <p className="mt-1 text-xs text-slate-500">
+        Qualified signals and active trade management.
+      </p>
+    </div>
+
+    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        {executionMode}
+      </span>
+    </div>
+
+  </div>
 
   <MarketStatus />
 

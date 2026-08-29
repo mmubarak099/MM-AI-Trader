@@ -5,10 +5,13 @@ type Props = {
 export default function TradeReadiness({
   signal,
 }: Props) {
+
   if (!signal) return null;
 
-const score =
-  signal.confirmationCount ?? 0;
+
+  const score =
+    signal.confirmationCount ?? 0;
+
 
   const checks = [
     {
@@ -57,69 +60,118 @@ const score =
     },
   ];
 
+
+  const actionColor =
+    signal.action === "BUY"
+      ? "text-emerald-400"
+      : signal.action === "SELL"
+      ? "text-rose-400"
+      : signal.action === "WATCH"
+      ? "text-blue-400"
+      : "text-amber-400";
+
+
+  const readinessColor =
+    score >= 4
+      ? "text-emerald-400"
+      : score >= 3
+      ? "text-amber-400"
+      : "text-rose-400";
+
+
+  const readinessBorder =
+    score >= 4
+      ? "border-emerald-500/20 bg-emerald-500/10"
+      : score >= 3
+      ? "border-amber-500/20 bg-amber-500/10"
+      : "border-rose-500/20 bg-rose-500/10";
+
+
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
 
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-3">
+    <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5 shadow-[0_12px_35px_rgba(0,0,0,0.18)]">
 
-        <h2 className="text-base font-semibold">
-          🤖 Trade Readiness
-        </h2>
 
-        <span className="text-xs text-gray-500">
-          Supporting Checks
-        </span>
+      {/* ================= HEADER ================= */}
+
+      <div className="flex items-start justify-between gap-4">
+
+        <div>
+
+          <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-400">
+            Signal Validation
+          </p>
+
+          <h2 className="mt-1 text-lg font-bold text-white">
+            Trade Readiness
+          </h2>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Supporting confirmation checks for the current signal.
+          </p>
+
+        </div>
+
+
+        <div
+          className={`rounded-lg border px-3 py-1.5 ${readinessBorder}`}
+        >
+
+          <span
+            className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${readinessColor}`}
+          >
+            {score} / 6
+          </span>
+
+        </div>
 
       </div>
 
 
-      {/* SUMMARY */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* ================= SUMMARY ================= */}
 
-        <div className="bg-gray-800 rounded-lg px-3 py-2">
+      <div className="mt-5 grid grid-cols-3 gap-3">
 
-          <p className="text-gray-500 text-xs">
+
+        {/* SIGNAL */}
+
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">
             Signal
           </p>
 
-          <p
-            className={`text-sm font-bold mt-1 ${
-              signal.action === "BUY"
-                ? "text-green-400"
-                : signal.action === "SELL"
-                ? "text-red-400"
-                : signal.action === "WATCH"
-                ? "text-blue-400"
-                : "text-yellow-400"
-            }`}
-          >
+          <p className={`mt-1 text-base font-black ${actionColor}`}>
             {signal.action}
           </p>
 
         </div>
 
 
-        <div className="bg-gray-800 rounded-lg px-3 py-2">
+        {/* CONFIDENCE */}
 
-          <p className="text-gray-500 text-xs">
+        <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3">
+
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">
             Confidence
           </p>
 
-          <p className="text-sm font-bold text-cyan-400 mt-1">
+          <p className="mt-1 text-base font-bold text-cyan-400">
             {signal.confidence}%
           </p>
 
         </div>
 
 
-        <div className="bg-gray-800 rounded-lg px-3 py-2">
+        {/* CONFIRMATIONS */}
 
-          <p className="text-gray-500 text-xs">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
+
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">
             Confirmations
           </p>
 
-          <p className="text-sm font-bold text-yellow-400 mt-1">
+          <p className={`mt-1 text-base font-bold ${readinessColor}`}>
             {score} / 6
           </p>
 
@@ -128,43 +180,103 @@ const score =
       </div>
 
 
-      {/* CONFIRMATION CHECKS */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
+      {/* ================= READINESS BAR ================= */}
+
+      <div className="mt-4">
+
+        <div className="mb-2 flex items-center justify-between">
+
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">
+            Confirmation Strength
+          </span>
+
+          <span className={`text-xs font-semibold ${readinessColor}`}>
+            {Math.round((score / 6) * 100)}%
+          </span>
+
+        </div>
+
+
+        <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${
+              score >= 4
+                ? "bg-emerald-400"
+                : score >= 3
+                ? "bg-amber-400"
+                : "bg-rose-400"
+            }`}
+            style={{
+              width: `${Math.min(
+                Math.max((score / 6) * 100, 0),
+                100
+              )}%`,
+            }}
+          />
+
+        </div>
+
+      </div>
+
+
+      {/* ================= CONFIRMATION CHECKS ================= */}
+
+      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
 
         {checks.map((check) => (
 
           <div
             key={check.label}
-            className="border-b border-gray-800 pb-2"
+            className={`rounded-xl border p-3 ${
+              check.passed
+                ? "border-emerald-500/15 bg-emerald-500/5"
+                : "border-slate-800 bg-slate-900/40"
+            }`}
           >
 
-            <p className="text-gray-500 text-xs">
-              {check.label}
-            </p>
+            <div className="flex items-start justify-between gap-3">
 
-            <div className="flex items-center gap-1 mt-1">
+              <div>
 
-              <span
-                className={
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">
+                  {check.label}
+                </p>
+
+                <p
+                  className={`mt-1 text-xs font-semibold ${
+                    check.passed
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}
+                >
+                  {check.value}
+                </p>
+
+              </div>
+
+
+              <div
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
                   check.passed
-                    ? "text-green-400 text-sm"
-                    : "text-red-400 text-sm"
-                }
-              >
-                {check.passed
-                  ? "✓"
-                  : "×"}
-              </span>
-
-              <span
-                className={`text-xs font-semibold ${
-                  check.passed
-                    ? "text-green-400"
-                    : "text-red-400"
+                    ? "border-emerald-500/30 bg-emerald-500/10"
+                    : "border-rose-500/30 bg-rose-500/10"
                 }`}
               >
-                {check.value}
-              </span>
+
+                <span
+                  className={`text-xs font-bold ${
+                    check.passed
+                      ? "text-emerald-400"
+                      : "text-rose-400"
+                  }`}
+                >
+                  {check.passed
+                    ? "✓"
+                    : "×"}
+                </span>
+
+              </div>
 
             </div>
 
@@ -175,15 +287,21 @@ const score =
       </div>
 
 
-      {/* INFORMATION ONLY */}
-      <div className="mt-4 pt-3 border-t border-gray-800">
+      {/* ================= INFORMATION ================= */}
 
-        <p className="text-xs text-gray-500">
-          These checks support the signal but do not create a separate trade decision.
-        </p>
+      <div className="mt-5 border-t border-slate-800/80 pt-4">
+
+        <div className="rounded-xl border border-blue-500/10 bg-blue-500/5 p-3">
+
+          <p className="text-xs leading-relaxed text-slate-500">
+            These checks support the signal but do not create a separate trade decision.
+          </p>
+
+        </div>
 
       </div>
 
     </div>
+
   );
 }

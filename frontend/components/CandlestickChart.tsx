@@ -29,10 +29,25 @@ export default function CandlestickChart({
 
   if (candles.length === 0) {
   return (
-    <div className="bg-gray-900 rounded-xl p-6">
-      <h2 className="text-2xl font-bold mb-4">
-        Candlestick Chart
-      </h2>
+    <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-6 shadow-[0_12px_35px_rgba(0,0,0,0.20)]">
+<div className="flex items-center justify-between mb-5">
+  <div>
+    <p className="text-[10px] uppercase tracking-[0.18em] text-blue-400">
+      Market Intelligence
+    </p>
+
+    <h2 className="text-lg font-bold text-white mt-1">
+      Candlestick Chart
+    </h2>
+  </div>
+
+  <div className="flex items-center gap-2 rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-1.5">
+    <span className="w-2 h-2 rounded-full bg-amber-400" />
+    <span className="text-[10px] uppercase tracking-wider text-slate-400">
+      Waiting
+    </span>
+  </div>
+</div>
 
       <p className="text-gray-400">
         Waiting for market data...
@@ -97,15 +112,33 @@ const scale = (price: number) => {
   .join(" ");
 
 return (
-  <div className="bg-gray-900 rounded-xl p-6">
-    <h2 className="text-2xl font-bold mb-4">
+  <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-6 shadow-[0_12px_35px_rgba(0,0,0,0.20)]">
+<div className="flex items-center justify-between mb-5">
+
+  <div>
+    <p className="text-[10px] uppercase tracking-[0.18em] text-blue-400">
+      Market Intelligence
+    </p>
+
+    <h2 className="text-lg font-bold text-white mt-1">
       Candlestick Chart
     </h2>
+  </div>
+
+  <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5">
+    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+
+    <span className="text-[10px] uppercase tracking-wider text-emerald-300">
+      Data Active
+    </span>
+  </div>
+
+</div>
 
 <svg
   viewBox="0 0 1000 450"
   preserveAspectRatio="xMidYMid meet"
-  className="w-full h-auto bg-gray-950 rounded-lg"
+  className="w-full h-auto rounded-xl border border-slate-800/80 bg-[#050b14] shadow-inner"
 >
     {Array.from({ length: priceLevels }).map((_, i) => {
 

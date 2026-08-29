@@ -49,48 +49,90 @@ const color =
 const session =
   marketStatus?.session ?? "";
 
-  return (
+return (
 
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+  <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5 shadow-[0_12px_35px_rgba(0,0,0,0.18)]">
 
-      <h3 className="text-gray-400">
-        🇮🇳 NSE MARKET STATUS
-      </h3>
+    <div className="flex items-start justify-between gap-4">
+
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+          Exchange Status
+        </p>
+
+        <h3 className="mt-1 text-sm font-semibold text-slate-200">
+          🇮🇳 NSE Market
+        </h3>
+      </div>
+
+      <div className="rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-1.5">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+          IST
+        </span>
+      </div>
+
+    </div>
 
 
-      <p className={`text-2xl font-bold mt-3 ${color}`}>
+    <div className="mt-5 flex items-center gap-3">
+
+      <span
+        className={`h-2.5 w-2.5 rounded-full ${
+          status.toLowerCase().includes("open")
+            ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.75)]"
+            : "bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,0.55)]"
+        }`}
+      />
+
+      <p className={`text-xl font-bold ${color}`}>
         {status}
       </p>
 
+    </div>
 
-      <div className="mt-4 space-y-2 text-gray-300">
 
+    <div className="mt-5 grid grid-cols-2 gap-3">
 
-        <p>
-          Current Time:
-          <span className="ml-2 font-bold text-white">
-            {indiaTime ? indiaTime.toLocaleTimeString() : ""}
-          </span>
+      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+
+        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+          Current Time
         </p>
 
-
-        <p>
-          Session:
-          <span className="ml-2 font-bold text-white">
-            {session}
-          </span>
+        <p className="mt-1 text-sm font-semibold text-white">
+          {indiaTime ? indiaTime.toLocaleTimeString() : ""}
         </p>
-
-
-        <p className="text-sm text-gray-500">
-          NSE Trading Hours: 09:15 AM - 03:30 PM
-        </p>
-
 
       </div>
 
 
+      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-3">
+
+        <p className="text-[10px] uppercase tracking-wider text-slate-500">
+          Session
+        </p>
+
+        <p className="mt-1 text-sm font-semibold text-white">
+          {session}
+        </p>
+
+      </div>
+
     </div>
 
-  );
+
+    <div className="mt-4 border-t border-slate-800/80 pt-3">
+
+      <p className="text-xs text-slate-500">
+        NSE Trading Hours
+        <span className="ml-2 font-medium text-slate-300">
+          09:15 AM – 03:30 PM
+        </span>
+      </p>
+
+    </div>
+
+  </div>
+
+);
 }
