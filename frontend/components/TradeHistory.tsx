@@ -6,24 +6,58 @@ export default function TradeHistory({
   trades,
 }: Props) {
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+    <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5">
 
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-base font-semibold">
-          Trade History
-        </h3>
+      {/* HEADER */}
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">
+            Execution Log
+          </p>
 
-        <span className="text-xs text-gray-500">
-          {trades.length} trades
-        </span>
+          <h3 className="mt-1 text-base font-semibold text-white">
+            Trade History
+          </h3>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Recent completed trades and execution events
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5">
+          <span className="text-xs font-medium text-slate-400">
+            {trades.length}{" "}
+            {trades.length === 1
+              ? "trade"
+              : "trades"}
+          </span>
+        </div>
       </div>
 
       {trades.length === 0 ? (
-        <p className="text-gray-500 text-sm">
-          No completed trades yet.
-        </p>
+
+        /* EMPTY STATE */
+        <div className="flex min-h-[150px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/30 px-6 text-center">
+
+          <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/70">
+            <span className="text-sm text-slate-500">
+              ↕
+            </span>
+          </div>
+
+          <p className="text-sm font-medium text-slate-300">
+            No completed trades yet
+          </p>
+
+          <p className="mt-1 max-w-[300px] text-xs leading-5 text-slate-500">
+            Completed trades for the current execution mode will appear here.
+          </p>
+
+        </div>
+
       ) : (
-        <div className="space-y-2">
+
+        <div className="space-y-3">
 
           {trades
             .slice()
@@ -52,80 +86,124 @@ export default function TradeHistory({
                     )
                   : null;
 
+              const isWin =
+                trade.result === "WIN";
+
+              const isLoss =
+                trade.result === "LOSS";
+
               return (
                 <details
                   key={trade.id}
-                  className="bg-gray-800 rounded-lg border border-gray-700"
+                  className="group overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/45 transition-colors open:border-slate-700"
                 >
 
                   {/* TRADE SUMMARY */}
-                  <summary className="cursor-pointer list-none px-3 py-3">
+                  <summary className="cursor-pointer list-none px-4 py-3.5">
 
                     <div className="flex items-center justify-between gap-4">
 
-                      <div className="flex items-center gap-4 flex-wrap">
+                      <div className="min-w-0">
 
-                        <span
-                          className={`text-sm font-bold ${
-                            trade.action === "BUY"
-                              ? "text-green-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {trade.action}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2.5">
 
-                        <span
-                          className={`text-xs font-semibold ${
-                            trade.result === "WIN"
-                              ? "text-green-400"
-                              : trade.result === "LOSS"
-                              ? "text-red-400"
-                              : "text-gray-400"
-                          }`}
-                        >
-                          {trade.result}
-                        </span>
-
-                        <span className="text-xs text-gray-500">
-                          Entry{" "}
-                          <span className="text-gray-200">
-                            {Number(
-                              trade.entry
-                            ).toFixed(2)}
+                          {/* DIRECTION */}
+                          <span
+                            className={`rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${
+                              trade.action === "BUY"
+                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                : "border-rose-500/20 bg-rose-500/10 text-rose-400"
+                            }`}
+                          >
+                            {trade.action}
                           </span>
-                        </span>
 
-                        <span className="text-xs text-gray-500">
-                          Exit{" "}
-                          <span className="text-gray-200">
-                            {Number(
-                              trade.currentPrice ??
-                              trade.exit ??
-                              trade.entry
-                            ).toFixed(2)}
+                          {/* RESULT */}
+                          <span
+                            className={`rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                              isWin
+                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                : isLoss
+                                ? "border-rose-500/20 bg-rose-500/10 text-rose-400"
+                                : "border-slate-700 bg-slate-800/70 text-slate-400"
+                            }`}
+                          >
+                            {trade.result}
                           </span>
-                        </span>
+
+                          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-600">
+                            {trade.status}
+                          </span>
+
+                        </div>
+
+                        {/* ENTRY / EXIT */}
+                        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+
+                          <div>
+                            <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                              Entry
+                            </p>
+
+                            <p className="mt-0.5 text-xs font-semibold text-slate-300">
+                              {Number(
+                                trade.entry
+                              ).toFixed(2)}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                              Exit
+                            </p>
+
+                            <p className="mt-0.5 text-xs font-semibold text-slate-300">
+                              {Number(
+                                trade.currentPrice ??
+                                trade.exit ??
+                                trade.entry
+                              ).toFixed(2)}
+                            </p>
+                          </div>
+
+                          {duration !== null && (
+                            <div>
+                              <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                                Duration
+                              </p>
+
+                              <p className="mt-0.5 text-xs font-semibold text-slate-400">
+                                {duration}s
+                              </p>
+                            </div>
+                          )}
+
+                        </div>
 
                       </div>
 
-                      <div className="text-right shrink-0">
+                      {/* P&L */}
+                      <div className="shrink-0 text-right">
+
+                        <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                          P&L
+                        </p>
 
                         <p
-                          className={`text-sm font-bold ${
-                            pnl >= 0
-                              ? "text-green-400"
-                              : "text-red-400"
+                          className={`mt-1 text-lg font-bold tracking-tight ${
+                            pnl > 0
+                              ? "text-emerald-400"
+                              : pnl < 0
+                              ? "text-rose-400"
+                              : "text-slate-300"
                           }`}
                         >
-                          {pnl >= 0 ? "+" : ""}
+                          {pnl > 0 ? "+" : ""}
                           {pnl.toFixed(2)}
                         </p>
 
-                        <p className="text-xs text-gray-500">
-                          {duration !== null
-                            ? `${duration}s`
-                            : "-"}
+                        <p className="mt-1 text-[10px] text-slate-600 group-open:text-slate-500">
+                          Details ↓
                         </p>
 
                       </div>
@@ -134,35 +212,37 @@ export default function TradeHistory({
 
                   </summary>
 
-
                   {/* EXPANDED TRADE DETAILS */}
-                  <div className="px-3 pb-3 border-t border-gray-700">
+                  <div className="border-t border-slate-800/80 px-4 pb-4">
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 py-3">
+                    <div className="grid grid-cols-2 gap-3 py-4 md:grid-cols-4">
 
-                      <div>
-                        <p className="text-xs text-gray-500">
+                      <div className="rounded-lg border border-slate-800/70 bg-slate-950/30 p-3">
+                        <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
                           Status
                         </p>
-                        <p className="text-xs font-semibold text-cyan-400">
+
+                        <p className="mt-1 text-xs font-semibold text-cyan-400">
                           {trade.status}
                         </p>
                       </div>
 
-                      <div>
-                        <p className="text-xs text-gray-500">
+                      <div className="rounded-lg border border-slate-800/70 bg-slate-950/30 p-3">
+                        <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
                           Confidence
                         </p>
-                        <p className="text-xs font-semibold text-yellow-400">
+
+                        <p className="mt-1 text-xs font-semibold text-amber-400">
                           {trade.confidence}%
                         </p>
                       </div>
 
-                      <div>
-                        <p className="text-xs text-gray-500">
+                      <div className="rounded-lg border border-slate-800/70 bg-slate-950/30 p-3">
+                        <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
                           Opened
                         </p>
-                        <p className="text-xs text-gray-200">
+
+                        <p className="mt-1 text-xs font-semibold text-slate-300">
                           {trade.openedAt
                             ? new Date(
                                 trade.openedAt
@@ -171,11 +251,12 @@ export default function TradeHistory({
                         </p>
                       </div>
 
-                      <div>
-                        <p className="text-xs text-gray-500">
+                      <div className="rounded-lg border border-slate-800/70 bg-slate-950/30 p-3">
+                        <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
                           Closed
                         </p>
-                        <p className="text-xs text-gray-200">
+
+                        <p className="mt-1 text-xs font-semibold text-slate-300">
                           {trade.closedAt
                             ? new Date(
                                 trade.closedAt
@@ -186,15 +267,25 @@ export default function TradeHistory({
 
                     </div>
 
-
-                    {/* COLLAPSED TRADE EVENTS */}
+                    {/* TRADE EVENTS */}
                     {trade.events &&
                       trade.events.length > 0 && (
 
-                        <details className="pt-3 border-t border-gray-700">
+                        <details className="border-t border-slate-800/80 pt-3">
 
-                          <summary className="cursor-pointer text-xs text-gray-400 hover:text-white">
-                            View {trade.events.length} trade events
+                          <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-2 text-xs text-slate-400 transition-colors hover:bg-slate-900/60 hover:text-white">
+
+                            <span>
+                              Execution Timeline
+                            </span>
+
+                            <span className="rounded-md border border-slate-800 bg-slate-900/70 px-2 py-0.5 text-[10px] text-slate-500">
+                              {trade.events.length}{" "}
+                              {trade.events.length === 1
+                                ? "event"
+                                : "events"}
+                            </span>
+
                           </summary>
 
                           <div className="mt-2 space-y-1">
@@ -225,48 +316,53 @@ export default function TradeHistory({
                                 return (
                                   <div
                                     key={event.id}
-                                    className="flex items-center justify-between gap-3 py-1"
+                                    className="flex items-start justify-between gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-slate-900/50"
                                   >
 
                                     <div className="min-w-0">
 
-                                      <div className="flex items-center gap-2 flex-wrap">
+                                      <div className="flex flex-wrap items-center gap-2">
 
-                                        <span className="text-cyan-400 text-xs font-medium">
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-cyan-400">
                                           {event.type}
                                         </span>
 
                                         {difference !== null && (
                                           <span
                                             className={`text-xs font-semibold ${
-                                              difference >= 0
-                                                ? "text-green-400"
-                                                : "text-red-400"
+                                              difference > 0
+                                                ? "text-emerald-400"
+                                                : difference < 0
+                                                ? "text-rose-400"
+                                                : "text-slate-400"
                                             }`}
                                           >
-                                            {difference >= 0
+                                            {difference > 0
                                               ? "+"
                                               : ""}
-                                            {difference.toFixed(2)} pts
+                                            {difference.toFixed(
+                                              2
+                                            )}{" "}
+                                            pts
                                           </span>
                                         )}
 
                                       </div>
 
-                                      <p className="text-gray-500 text-xs">
+                                      <p className="mt-1 text-xs leading-5 text-slate-500">
                                         {event.description}
                                       </p>
 
                                       {event.type ===
                                         "PARTIAL_PROFIT_BOOKED" && (
-                                        <p className="text-green-400 text-xs">
+                                        <p className="mt-1 text-xs font-medium text-emerald-400">
                                           Position: 50% booked
                                         </p>
                                       )}
 
                                     </div>
 
-                                    <span className="text-gray-600 text-xs whitespace-nowrap">
+                                    <span className="shrink-0 whitespace-nowrap text-[10px] text-slate-600">
                                       {event.timestamp
                                         ? new Date(
                                             event.timestamp
@@ -282,7 +378,6 @@ export default function TradeHistory({
                           </div>
 
                         </details>
-
                       )}
 
                   </div>
@@ -291,6 +386,15 @@ export default function TradeHistory({
               );
             })}
 
+        </div>
+      )}
+
+      {/* FOOTER */}
+      {trades.length > 5 && (
+        <div className="mt-4 border-t border-slate-800/70 pt-3 text-center">
+          <p className="text-[10px] uppercase tracking-[0.12em] text-slate-600">
+            Showing latest 5 of {trades.length} trades
+          </p>
         </div>
       )}
 

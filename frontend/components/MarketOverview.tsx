@@ -13,7 +13,6 @@ export default function MarketOverview({
   niftyChange,
   bankNiftyChange,
 }: MarketOverviewProps) {
-
   const markets = [
     {
       name: "NIFTY 50",
@@ -25,55 +24,65 @@ export default function MarketOverview({
       value: bankNifty.toLocaleString(),
       change: `${bankNiftyChange > 0 ? "+" : ""}${bankNiftyChange.toFixed(2)}%`,
     },
-    {
-      name: "SENSEX",
-      value: "80,600",
-      change: "+0.20%",
-    },
-    {
-      name: "INDIA VIX",
-      value: "14.5",
-      change: "-1.20%",
-    },
   ];
 
   return (
-    <div className="bg-gray-900 px-4 py-3 rounded-xl border border-gray-700">
+    <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5">
 
-      <h3 className="text-base font-semibold mb-3">
-        Market Overview
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+            Market Overview
+          </p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <h3 className="mt-1 text-base font-semibold text-white">
+            Primary Indices
+          </h3>
+        </div>
 
-        {markets.map((market) => (
+        <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-slate-400">
+            NSE
+          </span>
+        </div>
+      </div>
 
-          <div
-            key={market.name}
-            className="bg-gray-800 px-3 py-3 rounded-lg border border-gray-700"
-          >
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 
-            <p className="text-xs text-gray-400">
-              {market.name}
-            </p>
+        {markets.map((market) => {
+          const isNegative = market.change.startsWith("-");
 
-            <p className="text-lg font-bold mt-1">
-              {market.value}
-            </p>
-
-            <p
-              className={`text-sm font-medium mt-1 ${
-                market.change.startsWith("-")
-                  ? "text-red-400"
-                  : "text-green-400"
-              }`}
+          return (
+            <div
+              key={market.name}
+              className="rounded-xl border border-slate-800/80 bg-slate-900/55 p-4"
             >
-              {market.change}
-            </p>
+              <div className="flex items-start justify-between gap-4">
 
-          </div>
+                <div>
+                  <p className="text-xs font-medium tracking-wide text-slate-400">
+                    {market.name}
+                  </p>
 
-        ))}
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-white">
+                    {market.value}
+                  </p>
+                </div>
+
+                <div
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                    isNegative
+                      ? "border-rose-500/20 bg-rose-500/10 text-rose-400"
+                      : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                  }`}
+                >
+                  {market.change}
+                </div>
+
+              </div>
+            </div>
+          );
+        })}
 
       </div>
 

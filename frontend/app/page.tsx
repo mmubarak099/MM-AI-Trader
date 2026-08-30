@@ -3627,10 +3627,38 @@ useEffect(() => {
   realMarketData?.nifty?.price,
 ]);
 
+const dashboardAIAnalysis =
+  executionMode === "REAL"
+    ? realAIAnalysis
+    : executionMode === "REPLAY"
+    ? replayAIAnalysis
+    : aiSignal;
+
+const dashboardAIDisplay =
+  dashboardAIAnalysis ?? {
+    action: "WAIT",
+    trend: "Neutral",
+    confidence: 0,
+    reasons: [],
+    marketCondition: "Unavailable",
+    riskLevel: "—",
+    advice:
+      executionMode === "REAL"
+        ? "Waiting for real market analysis."
+        : executionMode === "REPLAY"
+        ? "Load and run replay data to generate analysis."
+        : "Waiting for analysis.",
+  };
+
+  const dashboardTradeHistory =
+  tradeHistory.filter(
+    (trade) =>
+      trade.source === executionMode
+  );
+
   return (
 
     <div className="min-h-screen bg-gray-950 text-white">
-
 
       <Header />
 
@@ -3724,528 +3752,11 @@ useEffect(() => {
 
 </div>
 
-{realMarketData && (
-  <details className="mt-3 border border-gray-800 rounded-lg bg-gray-900">
-
-    <summary className="px-3 py-3 cursor-pointer font-semibold text-gray-200">
-      🌐 Real Market Data — Diagnostics
-    </summary>
-
-    <div className="p-3 pt-1">
-
-    <div>
-      NIFTY 50:{" "}
-      <strong>
-        {realMarketData.nifty.price?.toFixed(2)}
-      </strong>
-    </div>
-
-    <div>
-      BANK NIFTY:{" "}
-      <strong>
-        {realMarketData.bankNifty.price?.toFixed(2)}
-      </strong>
-    </div>
-    <div>
-  Real NIFTY candles:{" "}
-  <strong>{realNiftyCandles.length}</strong>
-</div>
-<div>
-  Real 1m candles:{" "}
-  <strong>
-    {realNiftyCandles1m.length}
-  </strong>
-</div>
-<div>
-  Real RSI:{" "}
-  <strong>
-    {realRSI !== null
-      ? realRSI.toFixed(2)
-      : "Calculating..."}
-  </strong>
-</div>
-<div>
-  Real EMA20:{" "}
-  <strong>
-    {realEMA20 !== null
-      ? realEMA20.toFixed(2)
-      : "Calculating..."}
-  </strong>
-</div>
-<div>
-  Real EMA50:{" "}
-  <strong>
-    {realEMA50 !== null
-      ? realEMA50.toFixed(2)
-      : "Calculating..."}
-  </strong>
-</div>
-<div>
-  Real MACD:{" "}
-  <strong>
-    {realMACD !== null
-      ? realMACD.toFixed(2)
-      : "Calculating..."}
-  </strong>
-</div>
-<div>
-  Real Support:{" "}
-  <strong>
-    {realLevels.support.length > 0
-      ? realLevels.support
-          .map((level) => level.toFixed(2))
-          .join(", ")
-      : "None"}
-  </strong>
-</div>
-
-<div>
-  Real Resistance:{" "}
-  <strong>
-    {realLevels.resistance.length > 0
-      ? realLevels.resistance
-          .map((level) => level.toFixed(2))
-          .join(", ")
-      : "None"}
-  </strong>
-</div>
-<div>
-  Real Pattern:{" "}
-  <strong>{realPattern}</strong>
-</div>
-<div>
-  Real Market Structure:{" "}
-  <strong>{realMarketStructure}</strong>
-</div>
-<div>
-  Real Breakout:{" "}
-  <strong>{realBreakout}</strong>
-</div>
-<div>
-  Real Trend:{" "}
-  <strong>{realTrend}</strong>
-</div>
-<div>
-  Debug realTrend:{" "}
-  <strong>{realTrend}</strong>
-</div>
-
-<div>
-  Debug realRSI:{" "}
-  <strong>{realRSI ?? "--"}</strong>
-</div>
-
-<div>
-  Debug realEMA20:{" "}
-  <strong>{realEMA20 ?? "--"}</strong>
-</div>
-
-<div>
-  Debug realEMA50:{" "}
-  <strong>{realEMA50 ?? "--"}</strong>
-</div>
-
-<div>
-  Debug realMarketStructure:{" "}
-  <strong>{realMarketStructure}</strong>
-</div>
-
-<div>
-  Debug realBreakout:{" "}
-  <strong>{realBreakout}</strong>
-</div>
-<div>
-  Analyzer 5m Trend:{" "}
-  <strong>
-    {analysis5m?.trend ?? "--"}
-  </strong>
-</div>
-<div>
-  Analyzer 1m Trend:{" "}
-  <strong>
-    {analysis1m?.trend ?? "--"}
-  </strong>
-</div>
-<div>
-  Analyzer 5m RSI:{" "}
-  <strong>
-    {analysis5m?.rsi ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 1m RSI:{" "}
-  <strong>
-    {analysis1m?.rsi ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 5m Pattern:{" "}
-  <strong>
-    {analysis5m?.pattern ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 1m Pattern:{" "}
-  <strong>
-    {analysis1m?.pattern ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 5m Structure:{" "}
-  <strong>
-    {analysis5m?.marketStructure ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 1m Structure:{" "}
-  <strong>
-    {analysis1m?.marketStructure ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 5m Breakout:{" "}
-  <strong>
-    {analysis5m?.breakout ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Analyzer 1m Breakout:{" "}
-  <strong>
-    {analysis1m?.breakout ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Multi-Timeframe Direction:{" "}
-  <strong>
-    {multiTimeframeAnalysis?.direction ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Multi-Timeframe Alignment:{" "}
-  <strong>
-    {multiTimeframeAnalysis?.alignment ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Multi-Timeframe Entry State:{" "}
-  <strong>
-    {multiTimeframeAnalysis?.entryState ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Multi-Timeframe Reason:{" "}
-  <strong>
-    {multiTimeframeAnalysis?.reasons?.[0] ?? "--"}
-  </strong>
-</div>
-
-<div className="mt-2">
-  Qualified Real Signal:{" "}
-  <strong>
-    {qualifiedRealSignal?.action ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Qualified:{" "}
-  <strong>
-    {qualifiedRealSignal?.qualified
-      ? "YES"
-      : "NO"}
-  </strong>
-</div>
-
-<div>
-  Qualification Reason:{" "}
-  <strong>
-    {qualifiedRealSignal?.reason ?? "--"}
-  </strong>
-</div>
-
-<div className="mt-2">
-  Real V1 Action:{" "}
-  <strong>
-    {realAIAnalysis?.action ?? "Waiting..."}
-  </strong>
-</div>
-
-<div>
-  Real V1 Confidence:{" "}
-  <strong>
-    {realAIAnalysis?.confidence ?? "--"}%
-  </strong>
-</div>
-<div>
-  Real V1 Probability:{" "}
-  <strong>
-    {realAIAnalysis?.probability ?? "--"}%
-  </strong>
-</div>
-
-<div>
-  Real V1 Trend Score:{" "}
-  <strong>
-    {realAIAnalysis?.breakdown?.trend ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 Momentum Score:{" "}
-  <strong>
-    {realAIAnalysis?.breakdown?.momentum ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 EMA Score:{" "}
-  <strong>
-    {realAIAnalysis?.breakdown?.ema ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 Structure Score:{" "}
-  <strong>
-    {realAIAnalysis?.breakdown?.structure ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 Breakout Score:{" "}
-  <strong>
-    {realAIAnalysis?.breakdown?.breakout ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 Risk Score:{" "}
-  <strong>
-    {realAIAnalysis?.breakdown?.risk ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real Confirmations:{" "}
-  <strong>
-    {realPassedConfirmations} / 6
-  </strong>
-</div>
-<div>
-  Real V1 Market:{" "}
-  <strong>
-    {realAIAnalysis?.marketCondition ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 Risk:{" "}
-  <strong>
-    {realAIAnalysis?.riskLevel ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real V1 Advice:{" "}
-  <strong>
-    {realAIAnalysis?.advice ?? "--"}
-  </strong>
-</div>
-<div>
-  Real Market Regime:{" "}
-  <strong>
-    {realAIAnalysis?.marketRegime ?? "--"}
-  </strong>
-</div>
-
-<div>
-  Real Trade Quality:{" "}
-  <strong>
-    {realAIAnalysis?.tradeQuality ?? "--"}
-  </strong>
-</div>
-{realNiftyCandles.length > 0 && (
-  <div>
-    Latest candle:{" "}
-    <strong>
-      {new Date(
-        realNiftyCandles[
-          realNiftyCandles.length - 1
-        ].time
-      ).toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: "Asia/Kolkata",
-      })}
-    </strong>
-
-    {" | Close: "}
-
-    <strong>
-      {realNiftyCandles[
-        realNiftyCandles.length - 1
-      ].close?.toFixed(2)}
-    </strong>
-  </div>
-)}
-
-<div className="mt-4 pt-3 border-t border-gray-800">
-
-  <div className="font-semibold mb-2">
-    REAL Opportunity History
-  </div>
-
-  <div>
-    Qualified opportunities recorded:{" "}
-    <strong>
-      {realOpportunityHistoryRef.current.length}
-    </strong>
-  </div>
-
-  {realOpportunityHistoryRef.current.length === 0 ? (
-
-    <div className="mt-2 text-gray-400">
-      No qualified REAL opportunities recorded
-      during this session.
-    </div>
-
-  ) : (
-
-    <div className="mt-2 space-y-2">
-
-      {realOpportunityHistoryRef.current.map(
-        (item, index) => (
-
-          <div
-            key={`${item.candleTime}-${index}`}
-            className="p-2 border border-gray-800 rounded"
-          >
-            <div>
-              Opportunity #{index + 1}
-            </div>
-
-            <div>
-              Candle:{" "}
-              <strong>
-                {item.candleTime != null
-                  ? new Date(
-                      item.candleTime
-                    ).toLocaleTimeString(
-                      "en-IN",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        timeZone:
-                          "Asia/Kolkata",
-                      }
-                    )
-                  : "--"}
-              </strong>
-            </div>
-
-            <div>
-              Action:{" "}
-              <strong>{item.action}</strong>
-            </div>
-
-            <div>
-              Price:{" "}
-              <strong>
-                {item.price.toFixed(2)}
-              </strong>
-            </div>
-
-            <div>
-              Confidence:{" "}
-              <strong>
-                {item.confidence}%
-              </strong>
-            </div>
-
-            <div>
-              Confirmations:{" "}
-              <strong>
-                {item.confirmations} / 6
-              </strong>
-            </div>
-
-            <div>
-              MTF:{" "}
-              <strong>
-                {item.mtfDirection}
-              </strong>
-            </div>
-
-            <div>
-              Entry State:{" "}
-              <strong>
-                {item.entryState}
-              </strong>
-            </div>
-
-            <div>
-              Stability:{" "}
-              <strong>
-                {item.stability} /{" "}
-                {item.requiredStability}
-              </strong>
-            </div>
-
-            <div>
-              Stability Passed:{" "}
-              <strong>
-                {item.stabilityPassed
-                  ? "YES"
-                  : "NO"}
-              </strong>
-            </div>
-          <div>
-  Trade Plan Created:{" "}
-  <strong>
-    {item.tradePlanCreated
-      ? "YES"
-      : "NO"}
-  </strong>
-</div>
-{item.tradePlanRejectionReason && (
-  <div>
-    Trade Plan Rejection:{" "}
-    <strong>
-      {item.tradePlanRejectionReason}
-    </strong>
-  </div>
-)}
-          </div>
-
-        )
-      )}
-
-    </div>
-
-  )}
-
-</div>
-
-  </div>
-   </details>
-)}
-
 {/* ================= EXECUTION MODE ================= */}
 
 <div className="mt-4 p-3 border border-gray-800 rounded-lg bg-gray-900">
 
   <div className="flex items-center justify-between gap-4">
-  
     <div>
       <div className="text-sm font-semibold">
         Execution Mode
@@ -4344,6 +3855,536 @@ useEffect(() => {
 
   </div>
 
+</div>
+
+<div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+
+
+  {/* ================= LEFT SIDE ================= */}
+
+  <div className="xl:col-span-2 space-y-6 min-w-0">
+
+{executionMode === "REAL" ? (
+  <CandlestickChart
+    candles={realChartCandles.slice(-50)}
+    ema20={[]}
+    ema50={[]}
+    signals={[]}
+    patterns={[]}
+    levels={{
+      support: [],
+      resistance: [],
+    }}
+  />
+) : executionMode === "REPLAY" ? (
+  <CandlestickChart
+    candles={replayCandlesSoFar.slice(-50).map((candle) => ({
+  ...candle,
+  volume: candle.volume ?? 0,
+}))}
+    ema20={[]}
+    ema50={[]}
+    signals={[]}
+    patterns={[]}
+    levels={{
+      support: [],
+      resistance: [],
+    }}
+  />
+) : (
+  <CandlestickChart
+    candles={candleHistory}
+    ema20={ema20History}
+    ema50={ema50History}
+    signals={signalHistory}
+    patterns={patternHistory}
+    levels={levels}
+  />
+)}
+
+<IndicatorPanel
+  rsi={
+    executionMode === "REAL"
+      ? realRSI
+      : executionMode === "REPLAY"
+      ? replayAnalysis5m?.rsi ?? null
+      : currentRSI
+  }
+  ema20={
+    executionMode === "REAL"
+      ? realEMA20
+      : executionMode === "REPLAY"
+      ? replayAnalysis5m?.ema20 ?? null
+      : ema20
+  }
+  ema50={
+    executionMode === "REAL"
+      ? realEMA50
+      : executionMode === "REPLAY"
+      ? replayAnalysis5m?.ema50 ?? null
+      : ema50
+  }
+  macd={
+    executionMode === "REAL"
+      ? realMACD
+      : executionMode === "REPLAY"
+      ? replayAnalysis5m?.macd ?? null
+      : macd
+  }
+  vwap={
+    executionMode === "SIMULATOR"
+      ? vwap
+      : null
+  }
+/>
+  </div>
+
+{/* ================= RIGHT SIDE ================= */}
+
+<div className="space-y-6 xl:border-l xl:border-slate-800/60 xl:pl-6">
+
+  <div className="flex items-center justify-between">
+
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.18em] text-blue-400">
+        Execution Desk
+      </p>
+
+      <h3 className="mt-1 text-lg font-bold text-white">
+        Signal & Trade Control
+      </h3>
+
+      <p className="mt-1 text-xs text-slate-500">
+        Qualified signals and active trade management.
+      </p>
+    </div>
+
+    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        {executionMode}
+      </span>
+    </div>
+
+  </div>
+
+  <MarketStatus />
+
+  {currentSignal && (
+    <TradePlan
+      signal={currentSignal}
+      onTakeTrade={handleTakeTrade}
+    />
+  )}
+
+  {activeTrade && (
+    <ActiveTradeMonitor
+      trade={activeTrade}
+    />
+  )}
+
+  {activeTrade && (
+    <TradeManagerAI
+      decision={tradeDecision}
+    />
+  )}
+
+</div>
+
+</div>   {/* closes xl:grid-cols-3 layout */}
+
+{/* ================= LOWER DASHBOARD ================= */}
+
+<div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
+
+  {/* ================= LEFT COLUMN ================= */}
+
+  <div className="xl:col-span-2 space-y-4">
+
+    {/* LIVE PRICE */}
+<PriceChart
+  prices={
+    executionMode === "REAL"
+      ? [
+          ...realNiftyCandles1m
+            .slice(-50)
+            .map((candle) => candle.close),
+          ...(realMarketData?.nifty?.price != null
+            ? [realMarketData.nifty.price]
+            : []),
+        ]
+      : executionMode === "REPLAY"
+      ? replayCandlesSoFar
+          .slice(-50)
+          .map((candle) => candle.close)
+      : priceHistory
+  }
+/>
+
+    {/* TRADING PERFORMANCE */}
+<TradeStatistics
+  trades={dashboardTradeHistory}
+/>
+
+<TradeStatistics
+  trades={dashboardTradeHistory}
+/>
+
+  </div>
+
+
+  {/* ================= RIGHT COLUMN ================= */}
+
+  <div className="space-y-4">
+
+    {currentSignal && (
+      <CurrentSignalCard
+        signal={currentSignal}
+      />
+    )}
+
+  </div>
+
+</div>
+
+
+{/* ================= AI TRADE SIGNAL ================= */}
+
+<div className="mt-4">
+
+{/* ================= AI INTELLIGENCE ================= */}
+
+<div className="mt-6">
+
+  <div className="mb-4 flex items-end justify-between gap-4">
+
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">
+        AI Intelligence
+      </p>
+
+      <h3 className="mt-1 text-lg font-bold text-white">
+        Market Decision & Trade Readiness
+      </h3>
+
+      <p className="mt-1 text-xs text-slate-500">
+        Live AI assessment and confirmation strength for the current market setup.
+      </p>
+    </div>
+
+    <div className="hidden sm:block rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+        V1 Intelligence
+      </span>
+    </div>
+
+  </div>
+
+
+  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+
+<TradeReadiness
+  signal={
+    currentSignal
+      ? currentSignal
+      : dashboardAIDisplay
+  }
+/>
+
+<AIDecisionPanel
+  signal={dashboardAIDisplay}
+  pattern={pattern}
+/>
+  </div>
+
+</div>
+
+{/* ================= AI TRADE SIGNAL ================= */}
+
+<div className="mt-6 rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5">
+
+  {/* HEADER */}
+  <div className="mb-5 flex items-start justify-between gap-4">
+
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">
+        Signal Intelligence
+      </p>
+
+      <h3 className="mt-1 text-base font-semibold text-white">
+        AI Trade Signal
+      </h3>
+
+      <p className="mt-1 text-xs text-slate-500">
+        Current V1 execution assessment and trade levels
+      </p>
+    </div>
+
+    <span
+      className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] ${
+        (currentSignal?.action ?? dashboardAIDisplay.action) === "BUY"
+          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+          : (currentSignal?.action ?? dashboardAIDisplay.action) === "SELL"
+          ? "border-rose-500/20 bg-rose-500/10 text-rose-400"
+          : (currentSignal?.action ?? dashboardAIDisplay.action) === "WATCH"
+          ? "border-blue-500/20 bg-blue-500/10 text-blue-400"
+          : "border-amber-500/20 bg-amber-500/10 text-amber-400"
+      }`}
+    >
+      {activeTrade
+        ? `MANAGING ${activeTrade.action}`
+        : currentSignal
+        ? currentSignal.action
+        : dashboardAIDisplay.action}
+    </span>
+
+  </div>
+
+
+  {/* SIGNAL LOCK */}
+  {signalLocked && (
+    <div className="mb-4 flex items-center justify-between rounded-xl border border-cyan-500/20 bg-cyan-500/[0.07] px-4 py-3">
+
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-400">
+          Signal Locked
+        </p>
+
+        <p className="mt-1 text-xs text-slate-500">
+          Execution opportunity is currently reserved
+        </p>
+      </div>
+
+      <div className="text-right">
+        <p className="text-[9px] uppercase tracking-[0.12em] text-slate-600">
+          Expires In
+        </p>
+
+        <p className="mt-1 font-mono text-base font-bold text-white">
+          {Math.floor(signalTimeLeft / 60000)}:
+          {String(
+            Math.floor(
+              (signalTimeLeft % 60000) / 1000
+            )
+          ).padStart(2, "0")}
+        </p>
+      </div>
+
+    </div>
+  )}
+
+
+  {/* TRADE LEVELS */}
+  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+
+    {/* STOCK */}
+    <div className="rounded-xl border border-slate-800/80 bg-slate-900/50 p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Instrument
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-white">
+        NIFTY 50
+      </p>
+    </div>
+
+
+    {/* ENTRY */}
+    <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Entry
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-cyan-300">
+        {currentSignal
+          ? Number(currentSignal.entry).toFixed(2)
+          : executionMode === "REAL"
+          ? "—"
+          : riskPlan.entry}
+      </p>
+    </div>
+
+
+    {/* TARGET */}
+    <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Target 1
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-emerald-400">
+        {currentSignal
+          ? Number(currentSignal.target1).toFixed(2)
+          : executionMode === "REAL"
+          ? "—"
+          : riskPlan.target}
+      </p>
+    </div>
+
+
+    {/* STOP LOSS */}
+    <div className="rounded-xl border border-rose-500/15 bg-rose-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Stop Loss
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-rose-400">
+        {currentSignal
+          ? Number(currentSignal.stopLoss).toFixed(2)
+          : executionMode === "REAL"
+          ? "—"
+          : riskPlan.stopLoss}
+      </p>
+    </div>
+
+
+    {/* RISK REWARD */}
+    <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Risk / Reward
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-amber-400">
+        {currentSignal
+          ? `1 : ${currentSignal.riskRewardRatio ?? 1.5}`
+          : executionMode === "REAL"
+          ? "—"
+          : `1 : ${riskPlan.riskReward}`}
+      </p>
+    </div>
+
+
+    {/* RSI */}
+    <div className="rounded-xl border border-purple-500/15 bg-purple-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        RSI
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-purple-400">
+        {executionMode === "REAL"
+          ? realRSI !== null
+            ? realRSI.toFixed(1)
+            : "—"
+          : executionMode === "REPLAY"
+          ? replayAnalysis5m?.rsi != null
+            ? Number(
+                replayAnalysis5m.rsi
+              ).toFixed(1)
+            : "—"
+          : currentRSI !== null
+          ? currentRSI.toFixed(1)
+          : "—"}
+      </p>
+    </div>
+
+
+    {/* MARKET */}
+    <div className="rounded-xl border border-blue-500/15 bg-blue-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Market
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-blue-400">
+        {currentSignal
+          ? currentSignal.marketCondition
+          : dashboardAIDisplay.marketCondition}
+      </p>
+    </div>
+
+
+    {/* RISK */}
+    <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.05] p-3">
+      <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-slate-600">
+        Risk
+      </p>
+
+      <p className="mt-1.5 text-sm font-semibold text-amber-400">
+        {currentSignal
+          ? currentSignal.riskLevel
+          : dashboardAIDisplay.riskLevel}
+      </p>
+    </div>
+
+  </div>
+
+
+  {/* AI ADVICE */}
+  <div className="mt-4 rounded-xl border border-blue-500/15 bg-blue-500/[0.04] p-4">
+
+    <div className="flex items-start gap-3">
+
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10">
+        <span className="text-sm">
+          💡
+        </span>
+      </div>
+
+      <div className="min-w-0">
+
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+          AI Advice
+        </p>
+
+        <p className="mt-1.5 text-xs leading-5 text-slate-300">
+          {dashboardAIDisplay.advice}
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  {/* AI REASONING */}
+  {dashboardAIDisplay.reasons &&
+    dashboardAIDisplay.reasons.length > 0 && (
+
+      <details className="mt-3 overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/40">
+
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-xs text-slate-400 transition-colors hover:bg-slate-900/70 hover:text-white">
+
+          <span>
+            View AI reasoning
+          </span>
+
+          <span className="rounded-md border border-slate-800 bg-slate-950/50 px-2 py-0.5 text-[10px] text-slate-500">
+            {dashboardAIDisplay.reasons.length}{" "}
+            {dashboardAIDisplay.reasons.length === 1
+              ? "reason"
+              : "reasons"}
+          </span>
+
+        </summary>
+
+        <ul className="space-y-2 border-t border-slate-800/80 px-4 py-3">
+
+          {dashboardAIDisplay.reasons.map(
+            (reason: string, index: number) => (
+
+              <li
+                key={index}
+                className="flex items-start gap-2.5 text-xs leading-5 text-slate-400"
+              >
+
+                <span className="mt-[2px] text-emerald-400">
+                  ✓
+                </span>
+
+                <span>
+                  {reason}
+                </span>
+
+              </li>
+
+            )
+          )}
+
+        </ul>
+
+      </details>
+
+    )}
+
+</div>
 </div>
 
 {/* ================= REPLAY CONTROLS ================= */}
@@ -6074,384 +6115,521 @@ historicalScanResult.performanceAnalytics.confirmationPerformance.length > 0 && 
 
 )}
 
-<div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+{realMarketData && (
+  <details className="mt-3 border border-gray-800 rounded-lg bg-gray-900">
 
+    <summary className="px-3 py-3 cursor-pointer font-semibold text-gray-200">
+      🌐 Real Market Data — Diagnostics
+    </summary>
 
-  {/* ================= LEFT SIDE ================= */}
-
-  <div className="xl:col-span-2 space-y-6 min-w-0">
-
-    <CandlestickChart
-      candles={candleHistory}
-      ema20={ema20History}
-      ema50={ema50History}
-      signals={signalHistory}
-      patterns={patternHistory}
-      levels={levels}
-    />
-
-    <CandlestickChart
-  candles={realChartCandles.slice(-50)}
-  ema20={[]}
-  ema50={[]}
-  signals={[]}
-  patterns={[]}
-  levels={{
-    support: [],
-    resistance: [],
-  }}
-/>
-
-    <IndicatorPanel
-      rsi={currentRSI}
-      ema20={ema20}
-      ema50={ema50}
-      macd={macd}
-      vwap={vwap}
-    />
-
-  </div>
-
-{/* ================= RIGHT SIDE ================= */}
-
-<div className="space-y-6 xl:border-l xl:border-slate-800/60 xl:pl-6">
-
-  <div className="flex items-center justify-between">
+    <div className="p-3 pt-1">
 
     <div>
-      <p className="text-[10px] uppercase tracking-[0.18em] text-blue-400">
-        Execution Desk
-      </p>
-
-      <h3 className="mt-1 text-lg font-bold text-white">
-        Signal & Trade Control
-      </h3>
-
-      <p className="mt-1 text-xs text-slate-500">
-        Qualified signals and active trade management.
-      </p>
+      NIFTY 50:{" "}
+      <strong>
+        {realMarketData.nifty.price?.toFixed(2)}
+      </strong>
     </div>
 
-    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-        {executionMode}
-      </span>
+    <div>
+      BANK NIFTY:{" "}
+      <strong>
+        {realMarketData.bankNifty.price?.toFixed(2)}
+      </strong>
     </div>
+    <div>
+  Real NIFTY candles:{" "}
+  <strong>{realNiftyCandles.length}</strong>
+</div>
+<div>
+  Real 1m candles:{" "}
+  <strong>
+    {realNiftyCandles1m.length}
+  </strong>
+</div>
+<div>
+  Real RSI:{" "}
+  <strong>
+    {realRSI !== null
+      ? realRSI.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real EMA20:{" "}
+  <strong>
+    {realEMA20 !== null
+      ? realEMA20.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real EMA50:{" "}
+  <strong>
+    {realEMA50 !== null
+      ? realEMA50.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real MACD:{" "}
+  <strong>
+    {realMACD !== null
+      ? realMACD.toFixed(2)
+      : "Calculating..."}
+  </strong>
+</div>
+<div>
+  Real Support:{" "}
+  <strong>
+    {realLevels.support.length > 0
+      ? realLevels.support
+          .map((level) => level.toFixed(2))
+          .join(", ")
+      : "None"}
+  </strong>
+</div>
 
+<div>
+  Real Resistance:{" "}
+  <strong>
+    {realLevels.resistance.length > 0
+      ? realLevels.resistance
+          .map((level) => level.toFixed(2))
+          .join(", ")
+      : "None"}
+  </strong>
+</div>
+<div>
+  Real Pattern:{" "}
+  <strong>{realPattern}</strong>
+</div>
+<div>
+  Real Market Structure:{" "}
+  <strong>{realMarketStructure}</strong>
+</div>
+<div>
+  Real Breakout:{" "}
+  <strong>{realBreakout}</strong>
+</div>
+<div>
+  Real Trend:{" "}
+  <strong>{realTrend}</strong>
+</div>
+<div>
+  Debug realTrend:{" "}
+  <strong>{realTrend}</strong>
+</div>
+
+<div>
+  Debug realRSI:{" "}
+  <strong>{realRSI ?? "--"}</strong>
+</div>
+
+<div>
+  Debug realEMA20:{" "}
+  <strong>{realEMA20 ?? "--"}</strong>
+</div>
+
+<div>
+  Debug realEMA50:{" "}
+  <strong>{realEMA50 ?? "--"}</strong>
+</div>
+
+<div>
+  Debug realMarketStructure:{" "}
+  <strong>{realMarketStructure}</strong>
+</div>
+
+<div>
+  Debug realBreakout:{" "}
+  <strong>{realBreakout}</strong>
+</div>
+<div>
+  Analyzer 5m Trend:{" "}
+  <strong>
+    {analysis5m?.trend ?? "--"}
+  </strong>
+</div>
+<div>
+  Analyzer 1m Trend:{" "}
+  <strong>
+    {analysis1m?.trend ?? "--"}
+  </strong>
+</div>
+<div>
+  Analyzer 5m RSI:{" "}
+  <strong>
+    {analysis5m?.rsi ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m RSI:{" "}
+  <strong>
+    {analysis1m?.rsi ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 5m Pattern:{" "}
+  <strong>
+    {analysis5m?.pattern ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m Pattern:{" "}
+  <strong>
+    {analysis1m?.pattern ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 5m Structure:{" "}
+  <strong>
+    {analysis5m?.marketStructure ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m Structure:{" "}
+  <strong>
+    {analysis1m?.marketStructure ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 5m Breakout:{" "}
+  <strong>
+    {analysis5m?.breakout ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Analyzer 1m Breakout:{" "}
+  <strong>
+    {analysis1m?.breakout ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Direction:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.direction ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Alignment:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.alignment ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Entry State:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.entryState ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Multi-Timeframe Reason:{" "}
+  <strong>
+    {multiTimeframeAnalysis?.reasons?.[0] ?? "--"}
+  </strong>
+</div>
+
+<div className="mt-2">
+  Qualified Real Signal:{" "}
+  <strong>
+    {qualifiedRealSignal?.action ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Qualified:{" "}
+  <strong>
+    {qualifiedRealSignal?.qualified
+      ? "YES"
+      : "NO"}
+  </strong>
+</div>
+
+<div>
+  Qualification Reason:{" "}
+  <strong>
+    {qualifiedRealSignal?.reason ?? "--"}
+  </strong>
+</div>
+
+<div className="mt-2">
+  Real V1 Action:{" "}
+  <strong>
+    {realAIAnalysis?.action ?? "Waiting..."}
+  </strong>
+</div>
+
+<div>
+  Real V1 Confidence:{" "}
+  <strong>
+    {realAIAnalysis?.confidence ?? "--"}%
+  </strong>
+</div>
+<div>
+  Real V1 Probability:{" "}
+  <strong>
+    {realAIAnalysis?.probability ?? "--"}%
+  </strong>
+</div>
+
+<div>
+  Real V1 Trend Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.trend ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Momentum Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.momentum ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 EMA Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.ema ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Structure Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.structure ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Breakout Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.breakout ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Risk Score:{" "}
+  <strong>
+    {realAIAnalysis?.breakdown?.risk ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real Confirmations:{" "}
+  <strong>
+    {realPassedConfirmations} / 6
+  </strong>
+</div>
+<div>
+  Real V1 Market:{" "}
+  <strong>
+    {realAIAnalysis?.marketCondition ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Risk:{" "}
+  <strong>
+    {realAIAnalysis?.riskLevel ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real V1 Advice:{" "}
+  <strong>
+    {realAIAnalysis?.advice ?? "--"}
+  </strong>
+</div>
+<div>
+  Real Market Regime:{" "}
+  <strong>
+    {realAIAnalysis?.marketRegime ?? "--"}
+  </strong>
+</div>
+
+<div>
+  Real Trade Quality:{" "}
+  <strong>
+    {realAIAnalysis?.tradeQuality ?? "--"}
+  </strong>
+</div>
+{realNiftyCandles.length > 0 && (
+  <div>
+    Latest candle:{" "}
+    <strong>
+      {new Date(
+        realNiftyCandles[
+          realNiftyCandles.length - 1
+        ].time
+      ).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Kolkata",
+      })}
+    </strong>
+
+    {" | Close: "}
+
+    <strong>
+      {realNiftyCandles[
+        realNiftyCandles.length - 1
+      ].close?.toFixed(2)}
+    </strong>
+  </div>
+)}
+
+<div className="mt-4 pt-3 border-t border-gray-800">
+
+  <div className="font-semibold mb-2">
+    REAL Opportunity History
   </div>
 
-  <MarketStatus />
+  <div>
+    Qualified opportunities recorded:{" "}
+    <strong>
+      {realOpportunityHistoryRef.current.length}
+    </strong>
+  </div>
 
-  {currentSignal && (
-    <TradePlan
-      signal={currentSignal}
-      onTakeTrade={handleTakeTrade}
-    />
-  )}
+  {realOpportunityHistoryRef.current.length === 0 ? (
 
-  {activeTrade && (
-    <ActiveTradeMonitor
-      trade={activeTrade}
-    />
-  )}
+    <div className="mt-2 text-gray-400">
+      No qualified REAL opportunities recorded
+      during this session.
+    </div>
 
-  {activeTrade && (
-    <TradeManagerAI
-      decision={tradeDecision}
-    />
+  ) : (
+
+    <div className="mt-2 space-y-2">
+
+      {realOpportunityHistoryRef.current.map(
+        (item, index) => (
+
+          <div
+            key={`${item.candleTime}-${index}`}
+            className="p-2 border border-gray-800 rounded"
+          >
+            <div>
+              Opportunity #{index + 1}
+            </div>
+
+            <div>
+              Candle:{" "}
+              <strong>
+                {item.candleTime != null
+                  ? new Date(
+                      item.candleTime
+                    ).toLocaleTimeString(
+                      "en-IN",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        timeZone:
+                          "Asia/Kolkata",
+                      }
+                    )
+                  : "--"}
+              </strong>
+            </div>
+
+            <div>
+              Action:{" "}
+              <strong>{item.action}</strong>
+            </div>
+
+            <div>
+              Price:{" "}
+              <strong>
+                {item.price.toFixed(2)}
+              </strong>
+            </div>
+
+            <div>
+              Confidence:{" "}
+              <strong>
+                {item.confidence}%
+              </strong>
+            </div>
+
+            <div>
+              Confirmations:{" "}
+              <strong>
+                {item.confirmations} / 6
+              </strong>
+            </div>
+
+            <div>
+              MTF:{" "}
+              <strong>
+                {item.mtfDirection}
+              </strong>
+            </div>
+
+            <div>
+              Entry State:{" "}
+              <strong>
+                {item.entryState}
+              </strong>
+            </div>
+
+            <div>
+              Stability:{" "}
+              <strong>
+                {item.stability} /{" "}
+                {item.requiredStability}
+              </strong>
+            </div>
+
+            <div>
+              Stability Passed:{" "}
+              <strong>
+                {item.stabilityPassed
+                  ? "YES"
+                  : "NO"}
+              </strong>
+            </div>
+          <div>
+  Trade Plan Created:{" "}
+  <strong>
+    {item.tradePlanCreated
+      ? "YES"
+      : "NO"}
+  </strong>
+</div>
+{item.tradePlanRejectionReason && (
+  <div>
+    Trade Plan Rejection:{" "}
+    <strong>
+      {item.tradePlanRejectionReason}
+    </strong>
+  </div>
+)}
+          </div>
+
+        )
+      )}
+
+    </div>
+
   )}
 
 </div>
 
-</div>   {/* closes xl:grid-cols-3 layout */}
-
-{/* ================= LOWER DASHBOARD ================= */}
-
-<div className="mt-6 grid grid-cols-1 xl:grid-cols-3 gap-4 items-start">
-
-  {/* ================= LEFT COLUMN ================= */}
-
-  <div className="xl:col-span-2 space-y-4">
-
-    {/* LIVE PRICE */}
-    <PriceChart
-      prices={priceHistory}
-    />
-
-    {/* TRADING PERFORMANCE */}
-    <TradeStatistics
-      trades={tradeHistory}
-    />
-
-      <TradeHistory
-    trades={tradeHistory}
-  />
-
   </div>
-
-
-  {/* ================= RIGHT COLUMN ================= */}
-
-  <div className="space-y-4">
-
-    {currentSignal && (
-      <CurrentSignalCard
-        signal={currentSignal}
-      />
-    )}
-
-    <TradeReadiness
-      signal={
-        currentSignal
-          ? currentSignal
-          : aiSignal
-      }
-    />
-
-<AIDecisionPanel
-  signal={aiSignal}
-  pattern={pattern}
-/>
-
-  </div>
-
-</div>
-
-
-{/* ================= AI TRADE SIGNAL ================= */}
-
-<div className="mt-4">
-
-
-{/* ================= AI TRADE SIGNAL ================= */}
-
-<div className="mt-4 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3">
-
-  <div className="flex items-center justify-between mb-3">
-
-    <h3 className="text-base font-semibold">
-      AI Trade Signal
-    </h3>
-
-<span
-  className={`text-sm font-bold ${
-    (currentSignal?.action ?? aiSignal.action) === "BUY"
-      ? "text-green-400"
-      : (currentSignal?.action ?? aiSignal.action) === "SELL"
-      ? "text-red-400"
-      : (currentSignal?.action ?? aiSignal.action) === "WATCH"
-      ? "text-blue-400"
-      : "text-yellow-400"
-  }`}
->
-  {activeTrade
-    ? `MANAGING ${activeTrade.action}`
-    : currentSignal
-    ? currentSignal.action
-    : aiSignal.action}
-</span>
-
-  </div>
-
-
-  {/* SIGNAL LOCK */}
-
-  {signalLocked && (
-    <div className="mb-3 flex items-center justify-between rounded-md border border-cyan-800 bg-cyan-950/30 px-3 py-2">
-
-      <span className="text-xs font-semibold text-cyan-300">
-        🔒 Signal Locked
-      </span>
-
-      <span className="text-sm font-bold text-white">
-        {Math.floor(signalTimeLeft / 60000)}:
-        {String(
-          Math.floor(
-            (signalTimeLeft % 60000) / 1000
-          )
-        ).padStart(2, "0")}
-      </span>
-
-    </div>
-  )}
-
-
-  {/* MAIN DATA */}
-
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-5 gap-y-3">
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Stock
-      </p>
-
-      <p className="text-sm font-semibold mt-0.5">
-        NIFTY 50
-      </p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Entry
-      </p>
-
-      <p className="text-sm font-semibold mt-0.5">
-        {currentSignal
-  ? Number(currentSignal.entry).toFixed(2)
-  : riskPlan.entry}
-      </p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Target
-      </p>
-
-      <p className="text-sm font-semibold text-green-400 mt-0.5">
-        {currentSignal
-  ? Number(currentSignal.target1).toFixed(2)
-  : riskPlan.target}
-      </p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Stop Loss
-      </p>
-
-      <p className="text-sm font-semibold text-red-400 mt-0.5">
-        {currentSignal
-  ? Number(currentSignal.stopLoss).toFixed(2)
-  : riskPlan.stopLoss}
-      </p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Risk / Reward
-      </p>
-
-<p className="text-sm font-semibold text-yellow-400 mt-0.5">
-  1 : {currentSignal
-    ? currentSignal.riskRewardRatio ?? 1.5
-    : riskPlan.riskReward}
-</p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        RSI
-      </p>
-
-      <p className="text-sm font-semibold text-purple-400 mt-0.5">
-        {currentRSI !== null
-          ? currentRSI.toFixed(1)
-          : "—"}
-      </p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Market
-      </p>
-
-      <p className="text-sm font-semibold text-blue-400 mt-0.5">
-        {currentSignal
-  ? currentSignal.marketCondition
-  : aiSignal.marketCondition}
-      </p>
-    </div>
-
-
-    <div>
-      <p className="text-xs text-gray-500">
-        Risk
-      </p>
-
-      <p className="text-sm font-semibold text-yellow-400 mt-0.5">
-        {currentSignal
-  ? currentSignal.riskLevel
-  : aiSignal.riskLevel}
-      </p>
-    </div>
-
-  </div>
-
-
-  {/* AI ADVICE */}
-
-  <div className="mt-3 pt-3 border-t border-gray-800">
-
-    <div className="flex gap-2">
-
-      <span className="text-blue-400 text-sm">
-        💡
-      </span>
-
-      <div>
-        <p className="text-xs font-semibold text-blue-400">
-          AI Advice
-        </p>
-
-        <p className="text-xs text-gray-300 mt-1 leading-5">
-          {aiSignal.advice}
-        </p>
-      </div>
-
-    </div>
-
-  </div>
-
-
-  {/* REASONING */}
-
-  {aiSignal.reasons &&
-    aiSignal.reasons.length > 0 && (
-
-      <details className="mt-3 pt-3 border-t border-gray-800">
-
-        <summary className="text-xs text-gray-400 cursor-pointer hover:text-white">
-          View AI reasoning ({aiSignal.reasons.length})
-        </summary>
-
-        <ul className="mt-2 space-y-1">
-
-          {aiSignal.reasons.map(
-            (reason, index) => (
-
-              <li
-                key={index}
-                className="flex items-start gap-2 text-xs text-gray-400"
-              >
-
-                <span className="text-green-400">
-                  ✓
-                </span>
-
-                <span>
-                  {reason}
-                </span>
-
-              </li>
-
-            )
-          )}
-
-        </ul>
-
-      </details>
-
-    )}
-
-</div>
-
-</div>
+   </details>
+)}
         </main>
 
       </div>

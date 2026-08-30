@@ -7,7 +7,6 @@ type Props = {
 export default function TradeStatistics({
   trades,
 }: Props) {
-
   const closedTrades = trades.filter(
     (t) => t.status === "CLOSED"
   );
@@ -76,134 +75,214 @@ export default function TradeStatistics({
     return max;
   })();
 
-const decisiveTrades =
-  wins.length + losses.length;
+  const decisiveTrades =
+    wins.length + losses.length;
 
-const winRate =
-  decisiveTrades === 0
-    ? 0
-    : (
-        (wins.length / decisiveTrades) *
-        100
-      ).toFixed(1);
+  const winRate =
+    decisiveTrades === 0
+      ? 0
+      : (
+          (wins.length / decisiveTrades) *
+          100
+        ).toFixed(1);
+
+  const profitFactorDisplay =
+    profitFactor === Infinity
+      ? "∞"
+      : profitFactor.toFixed(2);
+
+  const performanceMetrics = [
+    {
+      label: "Trades",
+      value: closedTrades.length,
+      tone: "neutral",
+    },
+    {
+      label: "Wins",
+      value: wins.length,
+      tone: "positive",
+    },
+    {
+      label: "Losses",
+      value: losses.length,
+      tone: "negative",
+    },
+    {
+      label: "Win Rate",
+      value: `${winRate}%`,
+      tone:
+        Number(winRate) >= 50
+          ? "positive"
+          : closedTrades.length === 0
+          ? "neutral"
+          : "negative",
+    },
+    {
+      label: "Total P&L",
+      value: totalPnL.toFixed(2),
+      tone:
+        totalPnL > 0
+          ? "positive"
+          : totalPnL < 0
+          ? "negative"
+          : "neutral",
+    },
+    {
+      label: "Profit Factor",
+      value: profitFactorDisplay,
+      tone:
+        profitFactor >= 1 && profitFactor !== 0
+          ? "positive"
+          : profitFactor === 0
+          ? "neutral"
+          : "negative",
+    },
+    {
+      label: "Win Streak",
+      value: maxWinStreak,
+      tone:
+        maxWinStreak > 0
+          ? "positive"
+          : "neutral",
+    },
+    {
+      label: "Loss Streak",
+      value: maxLossStreak,
+      tone:
+        maxLossStreak > 0
+          ? "negative"
+          : "neutral",
+    },
+  ];
+
+  const toneClasses = {
+    positive:
+      "border-emerald-500/15 bg-emerald-500/[0.06] text-emerald-400",
+    negative:
+      "border-rose-500/15 bg-rose-500/[0.06] text-rose-400",
+    neutral:
+      "border-slate-800/80 bg-slate-900/50 text-slate-200",
+  };
 
   return (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 px-4 py-3">
+    <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5">
 
-      <div className="flex items-center justify-between mb-3">
+      {/* HEADER */}
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">
+            Performance
+          </p>
 
-        <h2 className="text-base font-semibold">
-          Trading Performance
-        </h2>
+          <h2 className="mt-1 text-base font-semibold text-white">
+            Trading Performance
+          </h2>
 
-        <span className="text-xs text-gray-500">
-          {closedTrades.length} trades
-        </span>
+          <p className="mt-1 text-xs text-slate-500">
+            Results from completed trades in the current execution mode
+          </p>
+        </div>
 
+        <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-1.5">
+          <span className="text-xs font-medium text-slate-400">
+            {closedTrades.length}{" "}
+            {closedTrades.length === 1
+              ? "trade"
+              : "trades"}
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* PRIMARY PERFORMANCE */}
+      <div className="mb-4 grid grid-cols-2 gap-3">
 
-        <div>
-          <p className="text-xs text-gray-500">
-            Trades
-          </p>
-
-          <p className="text-lg font-semibold">
-            {closedTrades.length}
-          </p>
-        </div>
-
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Wins
-          </p>
-
-          <p className="text-lg font-semibold text-green-400">
-            {wins.length}
-          </p>
-        </div>
-
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Losses
-          </p>
-
-          <p className="text-lg font-semibold text-red-400">
-            {losses.length}
-          </p>
-        </div>
-
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Win Rate
-          </p>
-
-          <p className="text-lg font-semibold">
-            {winRate}%
-          </p>
-        </div>
-
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Total P&L
+        <div
+          className={`rounded-xl border p-4 ${
+            totalPnL > 0
+              ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+              : totalPnL < 0
+              ? "border-rose-500/20 bg-rose-500/[0.06]"
+              : "border-slate-800/80 bg-slate-900/50"
+          }`}
+        >
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+            Net P&L
           </p>
 
           <p
-            className={`text-lg font-semibold ${
-              totalPnL >= 0
-                ? "text-green-400"
-                : "text-red-400"
+            className={`mt-2 text-2xl font-bold tracking-tight ${
+              totalPnL > 0
+                ? "text-emerald-400"
+                : totalPnL < 0
+                ? "text-rose-400"
+                : "text-slate-200"
             }`}
           >
+            {totalPnL > 0 ? "+" : ""}
             {totalPnL.toFixed(2)}
           </p>
         </div>
 
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Profit Factor
+        <div
+          className={`rounded-xl border p-4 ${
+            Number(winRate) >= 50 &&
+            closedTrades.length > 0
+              ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+              : "border-slate-800/80 bg-slate-900/50"
+          }`}
+        >
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+            Win Rate
           </p>
 
           <p
-            className={`text-lg font-semibold ${
-              profitFactor >= 1
-                ? "text-green-400"
-                : "text-red-400"
+            className={`mt-2 text-2xl font-bold tracking-tight ${
+              Number(winRate) >= 50 &&
+              closedTrades.length > 0
+                ? "text-emerald-400"
+                : "text-slate-200"
             }`}
           >
-            {profitFactor.toFixed(2)}
-          </p>
-        </div>
-
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Win Streak
-          </p>
-
-          <p className="text-lg font-semibold text-green-400">
-            {maxWinStreak}
-          </p>
-        </div>
-
-
-        <div>
-          <p className="text-xs text-gray-500">
-            Loss Streak
-          </p>
-
-          <p className="text-lg font-semibold text-red-400">
-            {maxLossStreak}
+            {winRate}%
           </p>
         </div>
 
       </div>
+
+      {/* METRICS */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+
+        {performanceMetrics.map(
+          (metric) => (
+            <div
+              key={metric.label}
+              className={`rounded-xl border p-3 ${
+                toneClasses[
+                  metric.tone as keyof typeof toneClasses
+                ]
+              }`}
+            >
+              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                {metric.label}
+              </p>
+
+              <p className="mt-1.5 text-lg font-semibold">
+                {metric.value}
+              </p>
+            </div>
+          )
+        )}
+
+      </div>
+
+      {/* EMPTY STATE */}
+      {closedTrades.length === 0 && (
+        <div className="mt-4 rounded-xl border border-dashed border-slate-800 bg-slate-950/30 px-4 py-3 text-center">
+          <p className="text-xs text-slate-500">
+            Performance metrics will populate after a trade is completed.
+          </p>
+        </div>
+      )}
 
     </div>
   );
