@@ -4217,7 +4217,7 @@ const dashboardAIDisplay =
       <p className="mt-1.5 text-sm font-semibold text-cyan-300">
         {currentSignal
           ? Number(currentSignal.entry).toFixed(2)
-          : executionMode === "REAL"
+          : executionMode !== "SIMULATOR"
           ? "—"
           : riskPlan.entry}
       </p>
@@ -4233,7 +4233,7 @@ const dashboardAIDisplay =
       <p className="mt-1.5 text-sm font-semibold text-emerald-400">
         {currentSignal
           ? Number(currentSignal.target1).toFixed(2)
-          : executionMode === "REAL"
+          : executionMode !== "SIMULATOR"
           ? "—"
           : riskPlan.target}
       </p>
@@ -4249,7 +4249,7 @@ const dashboardAIDisplay =
       <p className="mt-1.5 text-sm font-semibold text-rose-400">
         {currentSignal
           ? Number(currentSignal.stopLoss).toFixed(2)
-          : executionMode === "REAL"
+          : executionMode !== "SIMULATOR"
           ? "—"
           : riskPlan.stopLoss}
       </p>
@@ -4265,7 +4265,7 @@ const dashboardAIDisplay =
       <p className="mt-1.5 text-sm font-semibold text-amber-400">
         {currentSignal
           ? `1 : ${currentSignal.riskRewardRatio ?? 1.5}`
-          : executionMode === "REAL"
+          : executionMode !== "SIMULATOR"
           ? "—"
           : `1 : ${riskPlan.riskReward}`}
       </p>
