@@ -17,12 +17,12 @@ export default function MarketOverview({
     {
       name: "NIFTY 50",
       value: nifty.toLocaleString(),
-      change: `${niftyChange > 0 ? "+" : ""}${niftyChange.toFixed(2)}%`,
+      change: `${niftyChange > 0 ? "+" : ""}${niftyChange.toFixed(2)}% Today`,
     },
     {
       name: "BANK NIFTY",
       value: bankNifty.toLocaleString(),
-      change: `${bankNiftyChange > 0 ? "+" : ""}${bankNiftyChange.toFixed(2)}%`,
+      change: `${bankNiftyChange > 0 ? "+" : ""}${bankNiftyChange.toFixed(2)}% Today`,
     },
   ];
 

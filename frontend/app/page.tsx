@@ -710,21 +710,81 @@ useEffect(() => {
   realMarketData?.nifty?.time,
 ]);
 
+const liveRealCandleIsMarketSession =
+  (() => {
+    if (!liveRealCandle?.candleStart) {
+      return false;
+    }
+
+    // Convert timestamp to IST.
+    // IST is UTC + 5 hours 30 minutes.
+    const istTime = new Date(
+      new Date(
+        liveRealCandle.candleStart
+      ).getTime() +
+        330 * 60 * 1000
+    );
+
+    const minutes =
+      istTime.getUTCHours() * 60 +
+      istTime.getUTCMinutes();
+
+    const marketOpen =
+      9 * 60 + 15;
+
+    const marketClose =
+      15 * 60 + 30;
+
+    return (
+      minutes >= marketOpen &&
+      minutes < marketClose
+    );
+  })();
+  
 const realChartCandles = [
   ...realNiftyCandles.map(
     (candle) => ({
+      time: candle.time,
       open: candle.open,
       high: candle.high,
       low: candle.low,
       close: candle.close,
-      volume: 0,
+      volume: candle.volume ?? 0,
     })
   ),
 
-  ...(liveRealCandle
-    ? [liveRealCandle]
-    : []),
+...(liveRealCandle &&
+liveRealCandleIsMarketSession
+  ? [
+      {
+        ...liveRealCandle,
+        time: liveRealCandle.candleStart,
+      },
+    ]
+  : []),
 ];
+
+const realTodayChartCandles =
+  realChartCandles.filter((candle) => {
+    if (candle.time == null) {
+      return false;
+    }
+
+    const candleDate =
+      new Date(candle.time);
+
+    const today =
+      new Date();
+
+    return (
+      candleDate.getFullYear() ===
+        today.getFullYear() &&
+      candleDate.getMonth() ===
+        today.getMonth() &&
+      candleDate.getDate() ===
+        today.getDate()
+    );
+  });
 
 const realClosePrices =
   realNiftyCandles.map(
@@ -3866,7 +3926,7 @@ const dashboardAIDisplay =
 
 {executionMode === "REAL" ? (
   <CandlestickChart
-    candles={realChartCandles.slice(-50)}
+  candles={realTodayChartCandles}
     ema20={[]}
     ema50={[]}
     signals={[]}
@@ -4265,7 +4325,7 @@ const dashboardAIDisplay =
       <p className="mt-1.5 text-sm font-semibold text-amber-400">
         {currentSignal
           ? `1 : ${currentSignal.riskRewardRatio ?? 1.5}`
-          : executionMode !== "SIMULATOR"
+          : executionMode === "REAL"
           ? "—"
           : `1 : ${riskPlan.riskReward}`}
       </p>

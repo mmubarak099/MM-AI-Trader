@@ -86,8 +86,8 @@ export default function PriceChart({
                     : "border-rose-500/20 bg-rose-500/10 text-rose-400"
                 }`}
               >
-                {change > 0 ? "+" : ""}
-                {change.toFixed(2)}
+                Recent: {change > 0 ? "+" : ""}
+                {change.toFixed(2)} pts
               </div>
             )}
 
@@ -216,19 +216,6 @@ export default function PriceChart({
 
           </div>
         )}
-
-      </div>
-
-      {/* FOOTER */}
-      <div className="mt-3 flex items-center justify-between">
-
-        <span className="text-[10px] uppercase tracking-[0.14em] text-slate-600">
-          Price Points
-        </span>
-
-        <span className="text-xs font-medium text-slate-400">
-          {prices.length}
-        </span>
 
       </div>
 
