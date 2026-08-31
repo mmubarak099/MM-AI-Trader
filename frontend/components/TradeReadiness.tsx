@@ -1,307 +1,184 @@
+"use client";
+
 type Props = {
   signal: any;
+  pattern?: string;
+  confirmationCount?: number;
 };
 
 export default function TradeReadiness({
   signal,
+  pattern,
+  confirmationCount = 0,
 }: Props) {
+  const action =
+    signal?.action ?? "WAIT";
 
-  if (!signal) return null;
+  const confidence =
+    signal?.confidence ?? 0;
 
+  const isBuy =
+    action === "BUY";
 
-  const score =
-    signal.confirmationCount ?? 0;
+  const isSell =
+    action === "SELL";
 
+  const directional =
+    isBuy || isSell;
 
   const checks = [
     {
       label: "Trend",
-      passed:
-        signal.trend === "Bullish" ||
-        signal.trend === "Bearish",
-      value: signal.trend,
-    },
-    {
-      label: "Pattern",
-      passed:
-        signal.pattern &&
-        signal.pattern !== "No Pattern",
       value:
-        signal.pattern ?? "No Pattern",
+        signal?.trend ?? "Neutral",
+      passed:
+        isBuy
+          ? signal?.trend === "Bullish"
+          : isSell
+          ? signal?.trend === "Bearish"
+          : false,
     },
+
+    {
+      label: "Candlestick",
+      value:
+        pattern ?? "No Pattern",
+      passed:
+        isBuy
+          ? pattern ===
+              "Bullish Engulfing" ||
+            pattern === "Hammer"
+          : isSell
+          ? pattern ===
+            "Bearish Engulfing"
+          : false,
+    },
+
     {
       label: "Structure",
-      passed:
-        signal.marketStructure &&
-        signal.marketStructure !== "NEUTRAL",
       value:
-        signal.marketStructure ?? "NEUTRAL",
+        signal?.marketStructure ??
+        "—",
+      passed:
+        isBuy
+          ? signal?.marketStructure ===
+            "UPTREND"
+          : isSell
+          ? signal?.marketStructure ===
+            "DOWNTREND"
+          : false,
     },
+
     {
       label: "Breakout",
-      passed:
-        signal.breakout &&
-        signal.breakout !== "NONE",
       value:
-        signal.breakout ?? "NONE",
+        signal?.breakout ?? "NONE",
+      passed:
+        isBuy
+          ? signal?.breakout ===
+            "BREAKOUT"
+          : isSell
+          ? signal?.breakout ===
+            "BREAKDOWN"
+          : false,
     },
+
     {
       label: "Volume",
-      passed:
-        signal.volumeStrength === "STRONG",
       value:
-        signal.volumeStrength ?? "NORMAL",
+        signal?.volumeStrength ??
+        "NORMAL",
+      passed:
+        directional &&
+        signal?.volumeStrength ===
+          "HIGH",
     },
+
     {
       label: "Confidence",
+      value: `${confidence}%`,
       passed:
-        signal.confidence >= 90,
-      value: `${signal.confidence}%`,
+        directional &&
+        confidence >= 90,
     },
   ];
 
-
-  const actionColor =
-    signal.action === "BUY"
-      ? "text-emerald-400"
-      : signal.action === "SELL"
-      ? "text-rose-400"
-      : signal.action === "WATCH"
-      ? "text-blue-400"
-      : "text-amber-400";
-
-
-  const readinessColor =
-    score >= 4
-      ? "text-emerald-400"
-      : score >= 3
-      ? "text-amber-400"
-      : "text-rose-400";
-
-
-  const readinessBorder =
-    score >= 4
-      ? "border-emerald-500/20 bg-emerald-500/10"
-      : score >= 3
-      ? "border-amber-500/20 bg-amber-500/10"
-      : "border-rose-500/20 bg-rose-500/10";
-
+  const displayCount =
+    directional
+      ? confirmationCount
+      : 0;
 
   return (
-
-    <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-5 shadow-[0_12px_35px_rgba(0,0,0,0.18)]">
-
-
-      {/* ================= HEADER ================= */}
-
-      <div className="flex items-start justify-between gap-4">
-
+    <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-5 shadow-xl">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-
-          <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-400">
-            Signal Validation
+          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
+            AI Trade
           </p>
 
-          <h2 className="mt-1 text-lg font-bold text-white">
+          <h2 className="mt-1 text-lg font-semibold text-white">
             Trade Readiness
           </h2>
-
-          <p className="mt-1 text-xs text-slate-500">
-            Supporting confirmation checks for the current signal.
-          </p>
-
         </div>
 
-
-        <div
-          className={`rounded-lg border px-3 py-1.5 ${readinessBorder}`}
-        >
-
-          <span
-            className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${readinessColor}`}
-          >
-            {score} / 6
-          </span>
-
-        </div>
-
-      </div>
-
-
-      {/* ================= SUMMARY ================= */}
-
-      <div className="mt-5 grid grid-cols-3 gap-3">
-
-
-        {/* SIGNAL */}
-
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-
-          <p className="text-[10px] uppercase tracking-wider text-slate-500">
-            Signal
-          </p>
-
-          <p className={`mt-1 text-base font-black ${actionColor}`}>
-            {signal.action}
-          </p>
-
-        </div>
-
-
-        {/* CONFIDENCE */}
-
-        <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3">
-
-          <p className="text-[10px] uppercase tracking-wider text-slate-500">
-            Confidence
-          </p>
-
-          <p className="mt-1 text-base font-bold text-cyan-400">
-            {signal.confidence}%
-          </p>
-
-        </div>
-
-
-        {/* CONFIRMATIONS */}
-
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3">
-
-          <p className="text-[10px] uppercase tracking-wider text-slate-500">
-            Confirmations
-          </p>
-
-          <p className={`mt-1 text-base font-bold ${readinessColor}`}>
-            {score} / 6
-          </p>
-
-        </div>
-
-      </div>
-
-
-      {/* ================= READINESS BAR ================= */}
-
-      <div className="mt-4">
-
-        <div className="mb-2 flex items-center justify-between">
-
-          <span className="text-[10px] uppercase tracking-wider text-slate-500">
-            Confirmation Strength
-          </span>
-
-          <span className={`text-xs font-semibold ${readinessColor}`}>
-            {Math.round((score / 6) * 100)}%
-          </span>
-
-        </div>
-
-
-        <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-
-          <div
-            className={`h-full rounded-full transition-all duration-300 ${
-              score >= 4
-                ? "bg-emerald-400"
-                : score >= 3
-                ? "bg-amber-400"
-                : "bg-rose-400"
-            }`}
-            style={{
-              width: `${Math.min(
-                Math.max((score / 6) * 100, 0),
-                100
-              )}%`,
-            }}
-          />
-
-        </div>
-
-      </div>
-
-
-      {/* ================= CONFIRMATION CHECKS ================= */}
-
-      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-        {checks.map((check) => (
-
-          <div
-            key={check.label}
-            className={`rounded-xl border p-3 ${
-              check.passed
-                ? "border-emerald-500/15 bg-emerald-500/5"
-                : "border-slate-800 bg-slate-900/40"
-            }`}
-          >
-
-            <div className="flex items-start justify-between gap-3">
-
-              <div>
-
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">
-                  {check.label}
-                </p>
-
-                <p
-                  className={`mt-1 text-xs font-semibold ${
-                    check.passed
-                      ? "text-emerald-400"
-                      : "text-rose-400"
-                  }`}
-                >
-                  {check.value}
-                </p>
-
-              </div>
-
-
-              <div
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
-                  check.passed
-                    ? "border-emerald-500/30 bg-emerald-500/10"
-                    : "border-rose-500/30 bg-rose-500/10"
-                }`}
-              >
-
-                <span
-                  className={`text-xs font-bold ${
-                    check.passed
-                      ? "text-emerald-400"
-                      : "text-rose-400"
-                  }`}
-                >
-                  {check.passed
-                    ? "✓"
-                    : "×"}
-                </span>
-
-              </div>
-
-            </div>
-
+        <div className="text-right">
+          <div className="text-xl font-bold text-white">
+            {action}
           </div>
 
-        ))}
-
-      </div>
-
-
-      {/* ================= INFORMATION ================= */}
-
-      <div className="mt-5 border-t border-slate-800/80 pt-4">
-
-        <div className="rounded-xl border border-blue-500/10 bg-blue-500/5 p-3">
-
-          <p className="text-xs leading-relaxed text-slate-500">
-            These checks support the signal but do not create a separate trade decision.
-          </p>
-
+          <div className="text-xs text-slate-400">
+            {confidence}% confidence
+          </div>
         </div>
-
       </div>
 
-    </div>
+      <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        <span className="text-sm text-slate-400">
+          Confirmations
+        </span>
 
+        <span className="text-lg font-semibold text-white">
+          {displayCount} / 6
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {checks.map(check => (
+          <div
+            key={check.label}
+            className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2"
+          >
+            <span className="text-sm text-slate-400">
+              {check.label}
+            </span>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-300">
+                {check.value}
+              </span>
+
+              <span
+                className={
+                  check.passed
+                    ? "text-emerald-400"
+                    : "text-slate-600"
+                }
+              >
+                {check.passed
+                  ? "●"
+                  : "○"}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!directional && (
+        <div className="mt-4 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-xs text-slate-500">
+          Waiting for a BUY or SELL direction before
+          directional confirmations are evaluated.
+        </div>
+      )}
+    </div>
   );
 }

@@ -4020,11 +4020,7 @@ const dashboardAIDisplay =
   }
 />
 
-    {/* TRADING PERFORMANCE */}
-<TradeStatistics
-  trades={dashboardTradeHistory}
-/>
-
+{/* TRADING PERFORMANCE */}
 <TradeStatistics
   trades={dashboardTradeHistory}
 />
@@ -4087,6 +4083,24 @@ const dashboardAIDisplay =
     currentSignal
       ? currentSignal
       : dashboardAIDisplay
+  }
+  pattern={
+    currentSignal
+      ? currentSignal.pattern ?? "No Pattern"
+      : executionMode === "REAL"
+      ? realPattern
+      : executionMode === "REPLAY"
+      ? replayAIAnalysis?.pattern ?? "No Pattern"
+      : pattern
+  }
+  confirmationCount={
+    currentSignal
+      ? currentSignal.confirmationCount ?? 0
+      : executionMode === "REAL"
+      ? realPassedConfirmations
+      : executionMode === "REPLAY"
+      ? replayPassedConfirmations
+      : 0
   }
 />
 
