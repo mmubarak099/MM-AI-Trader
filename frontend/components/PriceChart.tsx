@@ -127,17 +127,22 @@ export default function PriceChart({
                 vertical={false}
               />
 
-              <XAxis
-                dataKey="time"
-                stroke="#64748b"
-                tick={{
-                  fontSize: 10,
-                  fill: "#64748b",
-                }}
-                tickLine={false}
-                axisLine={false}
-                minTickGap={35}
-              />
+<XAxis
+  dataKey="time"
+  stroke="#64748b"
+  tick={{
+    fontSize: 10,
+    fill: "#64748b",
+  }}
+  tickLine={false}
+  axisLine={false}
+  minTickGap={35}
+  interval="preserveStartEnd"
+  padding={{
+    left: 24,
+    right: 24,
+  }}
+/>
 
               <YAxis
                 stroke="#64748b"
