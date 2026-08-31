@@ -12,21 +12,45 @@ import {
 
 interface PriceChartProps {
   prices: number[];
+  times?: Array<string | number | Date>;
 }
 
 export default function PriceChart({
   prices,
+  times,
 }: PriceChartProps) {
-  const data = prices.map((price, index) => ({
-    time: new Date(
-      Date.now() - (prices.length - index) * 3000
-    ).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-    price,
-  }));
+  const data = prices.map((price, index) => {
+    const suppliedTime =
+      times?.[index] != null
+        ? new Date(times[index])
+        : null;
+
+    const displayTime =
+      suppliedTime &&
+      !Number.isNaN(suppliedTime.getTime())
+        ? suppliedTime.toLocaleTimeString(
+            "en-IN",
+            {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            }
+          )
+        : new Date(
+            Date.now() -
+              (prices.length - index) * 3000
+          ).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+
+    return {
+      time: displayTime,
+      price,
+    };
+  });
 
   const latestPrice =
     prices.length > 0
@@ -127,22 +151,22 @@ export default function PriceChart({
                 vertical={false}
               />
 
-<XAxis
-  dataKey="time"
-  stroke="#64748b"
-  tick={{
-    fontSize: 10,
-    fill: "#64748b",
-  }}
-  tickLine={false}
-  axisLine={false}
-  minTickGap={35}
-  interval="preserveStartEnd"
-  padding={{
-    left: 24,
-    right: 24,
-  }}
-/>
+              <XAxis
+                dataKey="time"
+                stroke="#64748b"
+                tick={{
+                  fontSize: 10,
+                  fill: "#64748b",
+                }}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={35}
+                interval="preserveStartEnd"
+                padding={{
+                  left: 24,
+                  right: 24,
+                }}
+              />
 
               <YAxis
                 stroke="#64748b"

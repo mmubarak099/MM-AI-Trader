@@ -4064,24 +4064,35 @@ const dashboardAIDisplay =
 <PriceChart
   prices={
     executionMode === "REAL"
-      ? [
-          ...realNiftyCandles1m
-            .slice(-50)
-            .map((candle) => candle.close),
-          ...(realMarketData?.nifty?.price != null
-            ? [realMarketData.nifty.price]
-            : []),
-        ]
+      ? realNiftyCandles1m
+          .slice(-50)
+          .map((candle) => candle.close)
       : executionMode === "REPLAY"
       ? replayCandlesSoFar
           .slice(-50)
           .map((candle) => candle.close)
       : priceHistory
   }
+  times={
+    executionMode === "REAL"
+      ? realNiftyCandles1m
+          .slice(-50)
+          .map((candle) => candle.time)
+      : executionMode === "REPLAY"
+      ? replayCandlesSoFar
+          .slice(-50)
+          .map((candle) => candle.time)
+      : undefined
+  }
 />
 
 {/* TRADING PERFORMANCE */}
 <TradeStatistics
+  trades={dashboardTradeHistory}
+/>
+
+{/* TRADE HISTORY */}
+<TradeHistory
   trades={dashboardTradeHistory}
 />
 
