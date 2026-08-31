@@ -4106,7 +4106,13 @@ const dashboardAIDisplay =
 
 <AIDecisionPanel
   signal={dashboardAIDisplay}
-  pattern={pattern}
+  pattern={
+    executionMode === "REAL"
+      ? realPattern
+      : executionMode === "REPLAY"
+      ? replayAIAnalysis?.pattern ?? "No Pattern"
+      : pattern
+  }
 />
   </div>
 
