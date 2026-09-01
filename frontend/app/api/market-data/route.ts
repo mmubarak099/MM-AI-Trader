@@ -233,6 +233,26 @@ export async function GET() {
       process.env
         .UPSTOX_BANKNIFTY_INSTRUMENT_KEY;
 
+    const relianceInstrumentKey =
+  process.env
+    .UPSTOX_RELIANCE_INSTRUMENT_KEY;
+
+const hdfcBankInstrumentKey =
+  process.env
+    .UPSTOX_HDFCBANK_INSTRUMENT_KEY;
+
+const iciciBankInstrumentKey =
+  process.env
+    .UPSTOX_ICICIBANK_INSTRUMENT_KEY;
+
+const sbinInstrumentKey =
+  process.env
+    .UPSTOX_SBIN_INSTRUMENT_KEY;
+
+const infyInstrumentKey =
+  process.env
+    .UPSTOX_INFY_INSTRUMENT_KEY;
+
     if (!accessToken) {
       throw new Error(
         "UPSTOX_ACCESS_TOKEN is missing."
@@ -250,6 +270,36 @@ export async function GET() {
         "UPSTOX_BANKNIFTY_INSTRUMENT_KEY is missing."
       );
     }
+
+    if (!relianceInstrumentKey) {
+  throw new Error(
+    "UPSTOX_RELIANCE_INSTRUMENT_KEY is missing."
+  );
+}
+
+if (!hdfcBankInstrumentKey) {
+  throw new Error(
+    "UPSTOX_HDFCBANK_INSTRUMENT_KEY is missing."
+  );
+}
+
+if (!iciciBankInstrumentKey) {
+  throw new Error(
+    "UPSTOX_ICICIBANK_INSTRUMENT_KEY is missing."
+  );
+}
+
+if (!sbinInstrumentKey) {
+  throw new Error(
+    "UPSTOX_SBIN_INSTRUMENT_KEY is missing."
+  );
+}
+
+if (!infyInstrumentKey) {
+  throw new Error(
+    "UPSTOX_INFY_INSTRUMENT_KEY is missing."
+  );
+}
 
     // =====================================
     // DATES
@@ -304,10 +354,18 @@ export async function GET() {
         niftyInstrumentKey
       );
 
-    const quoteInstrumentKeys =
-      encodeURIComponent(
-        `${niftyInstrumentKey},${bankNiftyInstrumentKey}`
-      );
+const quoteInstrumentKeys =
+  encodeURIComponent(
+    [
+      niftyInstrumentKey,
+      bankNiftyInstrumentKey,
+      relianceInstrumentKey,
+      hdfcBankInstrumentKey,
+      iciciBankInstrumentKey,
+      sbinInstrumentKey,
+      infyInstrumentKey,
+    ].join(",")
+  );
 
     const ltpUrl =
       `https://api.upstox.com/v3/market-quote/ltp?instrument_key=${quoteInstrumentKeys}`;
@@ -434,6 +492,36 @@ export async function GET() {
         ltpData,
         bankNiftyInstrumentKey
       );
+
+      const relianceQuote =
+  findQuote(
+    ltpData,
+    relianceInstrumentKey
+  );
+
+const hdfcBankQuote =
+  findQuote(
+    ltpData,
+    hdfcBankInstrumentKey
+  );
+
+const iciciBankQuote =
+  findQuote(
+    ltpData,
+    iciciBankInstrumentKey
+  );
+
+const sbinQuote =
+  findQuote(
+    ltpData,
+    sbinInstrumentKey
+  );
+
+const infyQuote =
+  findQuote(
+    ltpData,
+    infyInstrumentKey
+  );
 
     if (
       niftyQuote?.last_price ==
@@ -653,6 +741,43 @@ export async function GET() {
         time:
           Date.now(),
       },
+
+      scanner: {
+  reliance: {
+    symbol: "RELIANCE",
+    price:
+      relianceQuote?.last_price ??
+      null,
+  },
+
+  hdfcBank: {
+    symbol: "HDFCBANK",
+    price:
+      hdfcBankQuote?.last_price ??
+      null,
+  },
+
+  iciciBank: {
+    symbol: "ICICIBANK",
+    price:
+      iciciBankQuote?.last_price ??
+      null,
+  },
+
+  sbin: {
+    symbol: "SBIN",
+    price:
+      sbinQuote?.last_price ??
+      null,
+  },
+
+  infy: {
+    symbol: "INFY",
+    price:
+      infyQuote?.last_price ??
+      null,
+  },
+},
 
       niftyCandles,
 

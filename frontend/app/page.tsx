@@ -125,6 +125,61 @@ const [realNiftyCandles, setRealNiftyCandles] =
   const [liveRealCandle, setLiveRealCandle] =
   useState<any>(null);
 
+  // ======================================
+// STOCK MARKET SCANNER
+// Read-only scanner state.
+// Does not participate in trade execution.
+// ======================================
+
+type ScannerSymbol =
+  | "RELIANCE"
+  | "HDFCBANK"
+  | "ICICIBANK"
+  | "SBIN"
+  | "INFY";
+
+const [selectedScannerSymbol, setSelectedScannerSymbol] =
+  useState<ScannerSymbol>("RELIANCE");
+
+  type DashboardInstrument =
+  | "NIFTY"
+  | ScannerSymbol;
+
+const [
+  selectedDashboardInstrument,
+  setSelectedDashboardInstrument,
+] =
+  useState<DashboardInstrument>(
+    "NIFTY"
+  );
+
+const [scannerCandles5m, setScannerCandles5m] =
+  useState<any[]>([]);
+
+const [scannerCandles1m, setScannerCandles1m] =
+  useState<any[]>([]);
+
+const [scannerDataLoading, setScannerDataLoading] =
+  useState(false);
+
+const [scannerDataError, setScannerDataError] =
+  useState<string | null>(null);
+
+  type ScannerMarketData = {
+  candles5m: any[];
+  candles1m: any[];
+};
+
+const [scannerUniverseData, setScannerUniverseData] =
+  useState<
+    Partial<
+      Record<
+        ScannerSymbol,
+        ScannerMarketData
+      >
+    >
+  >({});
+
 const [replayState, setReplayState] =
   useState(
     createReplayState(
@@ -785,7 +840,34 @@ const realTodayChartCandles =
         today.getDate()
     );
   });
+const scannerTodayChartCandles =
+  selectedDashboardInstrument !== "NIFTY"
+    ? (
+        scannerUniverseData[
+          selectedDashboardInstrument
+        ]?.candles5m ?? []
+      ).filter((candle) => {
 
+        if (candle.time == null) {
+          return false;
+        }
+
+        const candleDate =
+          new Date(candle.time);
+
+        const today =
+          new Date();
+
+        return (
+          candleDate.getFullYear() ===
+            today.getFullYear() &&
+          candleDate.getMonth() ===
+            today.getMonth() &&
+          candleDate.getDate() ===
+            today.getDate()
+        );
+      })
+    : [];
 const realClosePrices =
   realNiftyCandles.map(
     (candle) => candle.close
@@ -1188,6 +1270,702 @@ const [analysis1m, setAnalysis1m] =
 
   const [qualifiedRealSignal, setQualifiedRealSignal] =
   useState<any>(null);
+
+// ======================================
+// SELECTED STOCK SCANNER ANALYSIS
+// Uses existing MM AI Trader brain.
+// Read-only: never enters trade execution.
+// ======================================
+
+const [scannerAnalysis, setScannerAnalysis] =
+  useState<any>(null);
+
+  const [scannerUniverseAnalysis, setScannerUniverseAnalysis] =
+  useState<
+    Partial<
+      Record<
+        ScannerSymbol,
+        any
+      >
+    >
+  >({});
+  
+  type ScannerStabilityResult = {
+  direction: "BUY" | "SELL" | null;
+  stability: number;
+  requiredStability: number;
+  stabilityPassed: boolean;
+  candleTime: string | number | null;
+};
+
+const [scannerStability, setScannerStability] =
+  useState<
+    Partial<
+      Record<
+        ScannerSymbol,
+        ScannerStabilityResult
+      >
+    >
+  >({});
+
+const scannerStableDirectionRef =
+  useRef<
+    Partial<
+      Record<
+        ScannerSymbol,
+        "BUY" | "SELL" | null
+      >
+    >
+  >({});
+
+const scannerStableCountRef =
+  useRef<
+    Partial<
+      Record<
+        ScannerSymbol,
+        number
+      >
+    >
+  >({});
+
+const scannerLastProcessedCandleRef =
+  useRef<
+    Partial<
+      Record<
+        ScannerSymbol,
+        string | number | null
+      >
+    >
+  >({});
+  
+// ======================================
+// STOCK SCANNER SIGNAL STABILITY
+// BUY  -> 2 qualified candles
+// SELL -> 1 qualified candle
+// Read-only. No trade execution.
+// ======================================
+
+useEffect(() => {
+  const scannerSymbols: ScannerSymbol[] = [
+    "RELIANCE",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
+    "INFY",
+  ];
+
+  const nextStability:
+    Partial<
+      Record<
+        ScannerSymbol,
+        ScannerStabilityResult
+      >
+    > = {};
+
+  scannerSymbols.forEach(
+    symbol => {
+
+      const analysis =
+        scannerUniverseAnalysis[
+          symbol
+        ];
+
+      if (!analysis) {
+        return;
+      }
+
+      const candleTime =
+        analysis.candleTime ?? null;
+
+      if (candleTime == null) {
+        return;
+      }
+
+      // --------------------------------------
+      // Same completed candle was already used.
+      // Preserve existing stability state.
+      // --------------------------------------
+
+      if (
+        scannerLastProcessedCandleRef
+          .current[symbol] ===
+        candleTime
+      ) {
+
+        const existingDirection =
+          scannerStableDirectionRef
+            .current[symbol] ?? null;
+
+        const existingCount =
+          scannerStableCountRef
+            .current[symbol] ?? 0;
+
+        const required =
+          existingDirection === "SELL"
+            ? 1
+            : existingDirection === "BUY"
+            ? 2
+            : 0;
+
+        nextStability[symbol] = {
+          direction:
+            existingDirection,
+
+          stability:
+            existingCount,
+
+          requiredStability:
+            required,
+
+          stabilityPassed:
+            required > 0 &&
+            existingCount >= required,
+
+          candleTime,
+        };
+
+        return;
+      }
+
+      scannerLastProcessedCandleRef
+        .current[symbol] =
+        candleTime;
+
+      const scannerQualified =
+        analysis.qualified === true &&
+        (
+          analysis.scannerAction === "BUY" ||
+          analysis.scannerAction === "SELL"
+        );
+
+      // --------------------------------------
+      // WAIT / unqualified -> reset
+      // --------------------------------------
+
+      if (!scannerQualified) {
+
+        scannerStableDirectionRef
+          .current[symbol] =
+          null;
+
+        scannerStableCountRef
+          .current[symbol] =
+          0;
+
+        nextStability[symbol] = {
+          direction: null,
+          stability: 0,
+          requiredStability: 0,
+          stabilityPassed: false,
+          candleTime,
+        };
+
+        return;
+      }
+
+      const direction =
+        analysis.scannerAction as
+          | "BUY"
+          | "SELL";
+
+      // --------------------------------------
+      // Consecutive directional stability
+      // --------------------------------------
+
+      if (
+        scannerStableDirectionRef
+          .current[symbol] ===
+        direction
+      ) {
+
+        scannerStableCountRef
+          .current[symbol] =
+          (
+            scannerStableCountRef
+              .current[symbol] ?? 0
+          ) + 1;
+
+      } else {
+
+        scannerStableDirectionRef
+          .current[symbol] =
+          direction;
+
+        scannerStableCountRef
+          .current[symbol] =
+          1;
+      }
+
+      const stability =
+        scannerStableCountRef
+          .current[symbol] ?? 0;
+
+      const requiredStability =
+        direction === "SELL"
+          ? 1
+          : 2;
+
+      nextStability[symbol] = {
+        direction,
+        stability,
+        requiredStability,
+
+        stabilityPassed:
+          stability >=
+          requiredStability,
+
+        candleTime,
+      };
+    }
+  );
+
+  setScannerStability(
+    previous => ({
+      ...previous,
+      ...nextStability,
+    })
+  );
+}, [
+  scannerUniverseAnalysis,
+]);
+
+function getScannerLivePrice(
+  symbol: ScannerSymbol
+): number | null {
+
+  const scanner =
+    realMarketData?.scanner;
+
+  if (!scanner) {
+    return null;
+  }
+
+  const price =
+    symbol === "RELIANCE"
+      ? scanner.reliance?.price
+      : symbol === "HDFCBANK"
+      ? scanner.hdfcBank?.price
+      : symbol === "ICICIBANK"
+      ? scanner.iciciBank?.price
+      : symbol === "SBIN"
+      ? scanner.sbin?.price
+      : symbol === "INFY"
+      ? scanner.infy?.price
+      : null;
+
+  return price != null &&
+    Number.isFinite(
+      Number(price)
+    )
+    ? Number(price)
+    : null;
+}
+// ======================================
+// SHARED STOCK SCANNER ANALYSIS
+// Reuses existing MM AI Trader brain.
+// Read-only: never enters trade execution.
+// ======================================
+
+function buildScannerAnalysis(
+  symbol: ScannerSymbol,
+  candles5m: any[],
+  candles1m: any[],
+  livePrice?: number | null
+) {
+
+  if (
+    candles5m.length < 50 ||
+    candles1m.length < 50
+  ) {
+    return null;
+  }
+
+  const currentCandle =
+    candles5m[
+      candles5m.length - 1
+    ];
+
+  if (!currentCandle) {
+    return null;
+  }
+
+  const closePrices =
+    candles5m.map(
+      candle =>
+        Number(candle.close)
+    );
+
+  const volumes =
+    candles5m.map(
+      candle =>
+        Number(
+          candle.volume ?? 0
+        )
+    );
+
+  const rsi =
+    calculateRSI(
+      closePrices
+    );
+
+  const ema20Value =
+    calculateEMA(
+      closePrices,
+      20
+    );
+
+  const ema50Value =
+    calculateEMA(
+      closePrices,
+      50
+    );
+
+  const macdValue =
+    calculateMACD(
+      closePrices
+    );
+
+  const levels =
+    calculateSupportResistance(
+      candles5m
+    );
+
+  const marketStructure =
+    detectMarketStructure(
+      closePrices
+    );
+
+  const previousCandle =
+    candles5m[
+      candles5m.length - 2
+    ];
+
+  const detectedPattern =
+    previousCandle
+      ? analyzePattern(
+          previousCandle,
+          currentCandle
+        )
+      : "No Pattern";
+
+  const currentPrice =
+    Number(
+      currentCandle.close
+    );
+
+    const liveAnalysisPrice =
+  livePrice != null &&
+  Number.isFinite(
+    Number(livePrice)
+  )
+    ? Number(livePrice)
+    : currentPrice;
+
+const breakout =
+  detectBreakout(
+    liveAnalysisPrice,
+    levels.resistance,
+    levels.support
+  );
+
+const trend =
+  getTrend(
+    liveAnalysisPrice,
+    ema20Value
+  );
+
+  const volumeStrength =
+    analyzeVolume(
+      volumes
+    );
+
+  // --------------------------------------
+  // Existing V1 brain
+  // --------------------------------------
+
+  const v1 =
+    analyzeMarketV1({
+      price:
+        currentPrice,
+
+      previousPrice:
+        Number(
+          currentCandle.open
+        ),
+
+      trend,
+
+      rsi,
+
+      ema20:
+        ema20Value,
+
+      ema50:
+        ema50Value,
+
+      macd:
+        macdValue,
+
+      pattern:
+        detectedPattern,
+
+      support:
+        levels.support,
+
+      resistance:
+        levels.resistance,
+
+      marketStructure,
+
+      breakout,
+
+      volumeStrength,
+    });
+
+  // --------------------------------------
+  // Existing 5m + 1m brain
+  // --------------------------------------
+
+const timeframe5m =
+  analyzeRealTimeframe(
+    candles5m,
+    liveAnalysisPrice
+  );
+
+const timeframe1m =
+  analyzeRealTimeframe(
+    candles1m,
+    liveAnalysisPrice
+  );
+
+  const multiTimeframe =
+    analyzeMultiTimeframe(
+      timeframe5m,
+      timeframe1m
+    );
+
+  // --------------------------------------
+  // Same 6 confirmation structure
+  // --------------------------------------
+
+  const confirmationChecks =
+    v1.action === "BUY"
+      ? [
+          trend ===
+            "Bullish",
+
+          detectedPattern ===
+            "Bullish Engulfing" ||
+            detectedPattern ===
+              "Hammer",
+
+          marketStructure ===
+            "UPTREND",
+
+          breakout ===
+            "BREAKOUT",
+
+          volumeStrength ===
+            "HIGH",
+
+          v1.confidence >= 90,
+        ]
+
+      : v1.action === "SELL"
+      ? [
+          trend ===
+            "Bearish",
+
+          detectedPattern ===
+            "Bearish Engulfing",
+
+          marketStructure ===
+            "DOWNTREND",
+
+          breakout ===
+            "BREAKDOWN",
+
+          volumeStrength ===
+            "HIGH",
+
+          v1.confidence >= 90,
+        ]
+
+      : [];
+
+  const confirmations =
+    confirmationChecks.filter(
+      Boolean
+    ).length;
+
+  const directionMatches =
+    (
+      v1.action === "BUY" ||
+      v1.action === "SELL"
+    ) &&
+    v1.action ===
+      multiTimeframe.direction;
+
+  const entryReady =
+    multiTimeframe.entryState ===
+    "READY";
+
+  const qualified =
+    directionMatches &&
+    entryReady &&
+    v1.confidence >= 90 &&
+    confirmations >= 4;
+
+  return {
+    symbol,
+
+    price:
+      currentPrice,
+
+    candleTime:
+      currentCandle.time,
+
+    rsi,
+
+    ema20:
+      ema20Value,
+
+    ema50:
+      ema50Value,
+
+    macd:
+      macdValue,
+
+    pattern:
+      detectedPattern,
+
+    support:
+      levels.support,
+
+    resistance:
+      levels.resistance,
+
+    marketStructure,
+
+    breakout,
+
+    trend,
+
+    volumeStrength,
+
+    v1,
+
+    timeframe5m,
+
+    timeframe1m,
+
+    multiTimeframe,
+
+    confirmations,
+
+    qualified,
+
+    scannerAction:
+      qualified
+        ? v1.action
+        : "WAIT",
+  };
+}
+
+
+// ======================================
+// ANALYZE CURRENTLY SELECTED STOCK
+// ======================================
+
+useEffect(() => {
+
+  const livePrice =
+    getScannerLivePrice(
+      selectedScannerSymbol
+    );
+
+  const result =
+    buildScannerAnalysis(
+      selectedScannerSymbol,
+      scannerCandles5m,
+      scannerCandles1m,
+      livePrice
+    );
+
+  setScannerAnalysis(
+    result
+  );
+
+}, [
+  selectedScannerSymbol,
+  scannerCandles5m,
+  scannerCandles1m,
+  realMarketData,
+]);
+
+// ======================================
+// ANALYZE COMPLETE STOCK SCANNER UNIVERSE
+// Read-only. No trade execution.
+// ======================================
+
+useEffect(() => {
+
+  const scannerSymbols: ScannerSymbol[] = [
+    "RELIANCE",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
+    "INFY",
+  ];
+
+  const nextAnalysis:
+    Partial<
+      Record<
+        ScannerSymbol,
+        any
+      >
+    > = {};
+
+  scannerSymbols.forEach(
+    symbol => {
+
+      const marketData =
+        scannerUniverseData[
+          symbol
+        ];
+
+      if (!marketData) {
+        return;
+      }
+
+const livePrice =
+  getScannerLivePrice(
+    symbol
+  );
+
+const result =
+  buildScannerAnalysis(
+    symbol,
+    marketData.candles5m,
+    marketData.candles1m,
+    livePrice
+  );
+
+      if (result) {
+        nextAnalysis[symbol] =
+          result;
+      }
+    }
+  );
+
+  setScannerUniverseAnalysis(
+    nextAnalysis
+  );
+
+}, [
+  scannerUniverseData,
+  realMarketData,
+]);
 
 const realConfirmationChecks =
   realAIAnalysis?.action === "BUY"
@@ -1767,6 +2545,197 @@ if (data.success) {
   return () => clearInterval(interval);
 
 }, []);
+
+// ======================================
+// FETCH ALL STOCK SCANNER DATA
+// Read-only. Does not affect NIFTY trading.
+// ======================================
+
+useEffect(() => {
+
+  const scannerSymbols: ScannerSymbol[] = [
+    "RELIANCE",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
+    "INFY",
+  ];
+
+  async function fetchScannerUniverse() {
+
+    try {
+
+      setScannerDataLoading(true);
+      setScannerDataError(null);
+
+      const results =
+        await Promise.allSettled(
+          scannerSymbols.map(
+            async symbol => {
+
+              const response =
+                await fetch(
+                  `/api/market-scanner?symbol=${symbol}`,
+                  {
+                    cache: "no-store",
+                  }
+                );
+
+              const data =
+                await response.json();
+
+              if (
+                !response.ok ||
+                !data.success
+              ) {
+                throw new Error(
+                  data?.error ??
+                  `Failed to fetch ${symbol} scanner data.`
+                );
+              }
+
+              return {
+                symbol,
+
+                candles5m:
+                  Array.isArray(
+                    data.candles5m
+                  )
+                    ? data.candles5m
+                    : [],
+
+                candles1m:
+                  Array.isArray(
+                    data.candles1m
+                  )
+                    ? data.candles1m
+                    : [],
+              };
+            }
+          )
+        );
+
+      const nextUniverse:
+        Partial<
+          Record<
+            ScannerSymbol,
+            ScannerMarketData
+          >
+        > = {};
+
+      const failedSymbols:
+        string[] = [];
+
+      results.forEach(
+        (result, index) => {
+
+          const symbol =
+            scannerSymbols[index];
+
+          if (
+            result.status ===
+            "fulfilled"
+          ) {
+
+            nextUniverse[symbol] = {
+              candles5m:
+                result.value.candles5m,
+
+              candles1m:
+                result.value.candles1m,
+            };
+
+          } else {
+
+            failedSymbols.push(
+              symbol
+            );
+
+console.warn(
+  `STOCK SCANNER DATA FETCH WARNING (${symbol}):`,
+  result.reason
+);
+          }
+        }
+      );
+
+      setScannerUniverseData(
+        previous => ({
+          ...previous,
+          ...nextUniverse,
+        })
+      );
+
+      if (
+        failedSymbols.length > 0
+      ) {
+        setScannerDataError(
+          `Scanner fetch failed for: ${failedSymbols.join(
+            ", "
+          )}`
+        );
+      }
+
+    } catch (error) {
+
+console.warn(
+  "STOCK SCANNER UNIVERSE FETCH WARNING:",
+  error
+);
+      setScannerDataError(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch stock scanner data."
+      );
+
+    } finally {
+
+      setScannerDataLoading(false);
+
+    }
+  }
+
+  fetchScannerUniverse();
+
+  const interval =
+    setInterval(
+      fetchScannerUniverse,
+      60000
+    );
+
+  return () =>
+    clearInterval(interval);
+
+}, []);
+
+
+// ======================================
+// SYNC CURRENTLY SELECTED STOCK
+// ======================================
+
+useEffect(() => {
+
+  const selectedData =
+    scannerUniverseData[
+      selectedScannerSymbol
+    ];
+
+  if (!selectedData) {
+    return;
+  }
+
+  setScannerCandles5m(
+    selectedData.candles5m
+  );
+
+  setScannerCandles1m(
+    selectedData.candles1m
+  );
+
+}, [
+  selectedScannerSymbol,
+  scannerUniverseData,
+]);
 
   useEffect(() => {
 
@@ -3924,9 +4893,252 @@ const dashboardAIDisplay =
 
   <div className="xl:col-span-2 space-y-6 min-w-0">
 
+{/* ======================================
+    MARKET INSTRUMENT SELECTOR
+====================================== */}
+
+{executionMode === "REAL" && (
+  <div className="flex flex-wrap gap-2">
+
+    {(
+      [
+        "NIFTY",
+        "RELIANCE",
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "INFY",
+      ] as DashboardInstrument[]
+    ).map((instrument) => {
+
+      const selected =
+        selectedDashboardInstrument ===
+        instrument;
+
+      return (
+        <button
+          key={instrument}
+          type="button"
+onClick={() => {
+  setSelectedDashboardInstrument(
+    instrument
+  );
+
+  if (instrument !== "NIFTY") {
+    setSelectedScannerSymbol(
+      instrument
+    );
+  }
+}}
+          className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
+            selected
+              ? "border-blue-500 bg-blue-600/20 text-blue-300"
+              : "border-slate-700 bg-slate-900/70 text-slate-400 hover:border-slate-600 hover:text-white"
+          }`}
+        >
+          {instrument === "NIFTY"
+            ? "NIFTY 50"
+            : instrument}
+        </button>
+      );
+    })}
+
+  </div>
+)}
+
+{/* ======================================
+    STOCK MARKET SCANNER
+====================================== */}
+
+{executionMode === "REAL" && (
+  <div className="rounded-2xl border border-slate-800/80 bg-[#081321]/90 p-4">
+
+    <div className="mb-4 flex items-center justify-between gap-4">
+
+      <div>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">
+          Market Scanner
+        </p>
+
+        <h3 className="mt-1 text-sm font-semibold text-white">
+          Stock Opportunities
+        </h3>
+      </div>
+
+      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+        Read Only
+      </span>
+
+    </div>
+
+    <div className="overflow-x-auto">
+
+      <div className="min-w-[760px]">
+
+        {/* HEADER */}
+
+        <div className="grid grid-cols-[1.3fr_1fr_0.8fr_0.9fr_0.9fr_1fr_1fr_1fr] gap-3 border-b border-slate-800 px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+
+          <div>Symbol</div>
+          <div>Price</div>
+          <div>V1</div>
+          <div>Confidence</div>
+          <div>MTF</div>
+          <div>Confirmations</div>
+          <div>Stability</div>
+          <div>Status</div>
+
+        </div>
+
+        {(
+          [
+            "RELIANCE",
+            "HDFCBANK",
+            "ICICIBANK",
+            "SBIN",
+            "INFY",
+          ] as ScannerSymbol[]
+        ).map((symbol) => {
+
+          const analysis =
+            scannerUniverseAnalysis[symbol];
+
+          const stability =
+            scannerStability[symbol];
+
+            const livePrice =
+  getScannerLivePrice(symbol);
+
+const displayPrice =
+  livePrice ??
+  analysis?.price ??
+  null;
+
+          const v1Action =
+            analysis?.v1?.action ?? "WAIT";
+
+          const confidence =
+            analysis?.v1?.confidence ?? 0;
+
+          const mtfDirection =
+            analysis?.multiTimeframe
+              ?.direction ?? "WAIT";
+
+          const confirmations =
+            analysis?.confirmations ?? 0;
+
+          const stabilityText =
+            stability?.requiredStability
+              ? `${stability.stability}/${stability.requiredStability}`
+              : "0/0";
+
+          const ready =
+            analysis?.qualified === true &&
+            stability?.stabilityPassed === true;
+
+          return (
+            <button
+              key={symbol}
+              type="button"
+              onClick={() => {
+                setSelectedDashboardInstrument(
+                  symbol
+                );
+
+                setSelectedScannerSymbol(
+                  symbol
+                );
+              }}
+              className={`grid w-full grid-cols-[1.3fr_1fr_0.8fr_0.9fr_0.9fr_1fr_1fr_1fr] gap-3 border-b border-slate-800/70 px-3 py-3 text-left text-xs transition last:border-b-0 ${
+                selectedDashboardInstrument ===
+                symbol
+                  ? "bg-blue-500/10"
+                  : "hover:bg-slate-800/40"
+              }`}
+            >
+
+              <div className="font-semibold text-white">
+                {symbol}
+              </div>
+
+              <div className="font-medium text-slate-300">
+  {displayPrice != null
+    ? displayPrice.toFixed(2)
+    : "—"}
+</div>
+
+              <div
+                className={
+                  v1Action === "BUY"
+                    ? "font-semibold text-emerald-400"
+                    : v1Action === "SELL"
+                    ? "font-semibold text-rose-400"
+                    : "font-semibold text-slate-400"
+                }
+              >
+                {v1Action}
+              </div>
+
+              <div className="text-slate-300">
+                {confidence}%
+              </div>
+
+              <div
+                className={
+                  mtfDirection === "BUY"
+                    ? "text-emerald-400"
+                    : mtfDirection === "SELL"
+                    ? "text-rose-400"
+                    : "text-slate-400"
+                }
+              >
+                {mtfDirection}
+              </div>
+
+              <div className="text-slate-300">
+                {confirmations}/6
+              </div>
+
+              <div className="text-slate-300">
+                {stabilityText}
+              </div>
+
+<div>
+  <span
+    className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] ${
+      ready
+        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+        : analysis?.qualified === true
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-400"
+        : "border-slate-700 bg-slate-800/50 text-slate-500"
+    }`}
+  >
+    {ready
+      ? "READY"
+      : analysis?.qualified === true
+      ? "STABILIZING"
+      : "WAIT"}
+  </span>
+</div>
+
+            </button>
+          );
+        })}
+
+      </div>
+
+    </div>
+
+  </div>
+)}
+
 {executionMode === "REAL" ? (
   <CandlestickChart
-  candles={realTodayChartCandles}
+candles={
+  selectedDashboardInstrument === "NIFTY"
+    ? realTodayChartCandles
+    : scannerTodayChartCandles
+}
     ema20={[]}
     ema50={[]}
     signals={[]}
@@ -3935,8 +5147,14 @@ const dashboardAIDisplay =
       support: [],
       resistance: [],
     }}
+    instrumentLabel={
+      selectedDashboardInstrument === "NIFTY"
+        ? "NIFTY 50"
+        : selectedDashboardInstrument
+    }
   />
 ) : executionMode === "REPLAY" ? (
+
   <CandlestickChart
     candles={replayCandlesSoFar.slice(-50).map((candle) => ({
   ...candle,
@@ -3965,32 +5183,44 @@ const dashboardAIDisplay =
 <IndicatorPanel
   rsi={
     executionMode === "REAL"
-      ? realRSI
+      ? selectedDashboardInstrument === "NIFTY"
+        ? realRSI
+        : scannerAnalysis?.rsi ?? null
       : executionMode === "REPLAY"
       ? replayAnalysis5m?.rsi ?? null
       : currentRSI
   }
+
   ema20={
     executionMode === "REAL"
-      ? realEMA20
+      ? selectedDashboardInstrument === "NIFTY"
+        ? realEMA20
+        : scannerAnalysis?.ema20 ?? null
       : executionMode === "REPLAY"
       ? replayAnalysis5m?.ema20 ?? null
       : ema20
   }
+
   ema50={
     executionMode === "REAL"
-      ? realEMA50
+      ? selectedDashboardInstrument === "NIFTY"
+        ? realEMA50
+        : scannerAnalysis?.ema50 ?? null
       : executionMode === "REPLAY"
       ? replayAnalysis5m?.ema50 ?? null
       : ema50
   }
+
   macd={
     executionMode === "REAL"
-      ? realMACD
+      ? selectedDashboardInstrument === "NIFTY"
+        ? realMACD
+        : scannerAnalysis?.macd ?? null
       : executionMode === "REPLAY"
       ? replayAnalysis5m?.macd ?? null
       : macd
   }
+
   vwap={
     executionMode === "SIMULATOR"
       ? vwap
@@ -4151,12 +5381,19 @@ const dashboardAIDisplay =
 
 <TradeReadiness
   signal={
-    currentSignal
+    executionMode === "REAL" &&
+    selectedDashboardInstrument !== "NIFTY"
+      ? scannerAnalysis?.v1 ?? dashboardAIDisplay
+      : currentSignal
       ? currentSignal
       : dashboardAIDisplay
   }
+
   pattern={
-    currentSignal
+    executionMode === "REAL" &&
+    selectedDashboardInstrument !== "NIFTY"
+      ? scannerAnalysis?.pattern ?? "No Pattern"
+      : currentSignal
       ? currentSignal.pattern ?? "No Pattern"
       : executionMode === "REAL"
       ? realPattern
@@ -4164,8 +5401,12 @@ const dashboardAIDisplay =
       ? replayAIAnalysis?.pattern ?? "No Pattern"
       : pattern
   }
+
   confirmationCount={
-    currentSignal
+    executionMode === "REAL" &&
+    selectedDashboardInstrument !== "NIFTY"
+      ? scannerAnalysis?.confirmations ?? 0
+      : currentSignal
       ? currentSignal.confirmationCount ?? 0
       : executionMode === "REAL"
       ? realPassedConfirmations
@@ -4176,9 +5417,18 @@ const dashboardAIDisplay =
 />
 
 <AIDecisionPanel
-  signal={dashboardAIDisplay}
+  signal={
+    executionMode === "REAL" &&
+    selectedDashboardInstrument !== "NIFTY"
+      ? scannerAnalysis?.v1 ?? dashboardAIDisplay
+      : dashboardAIDisplay
+  }
+
   pattern={
-    executionMode === "REAL"
+    executionMode === "REAL" &&
+    selectedDashboardInstrument !== "NIFTY"
+      ? scannerAnalysis?.pattern ?? "No Pattern"
+      : executionMode === "REAL"
       ? realPattern
       : executionMode === "REPLAY"
       ? replayAIAnalysis?.pattern ?? "No Pattern"

@@ -18,6 +18,7 @@ type Props = {
   signals: SignalHistory[];
   patterns: PatternHistory[];
   levels: SupportResistance;
+  instrumentLabel?: string;
 };
 
 export default function CandlestickChart({
@@ -27,6 +28,7 @@ export default function CandlestickChart({
   signals,
   patterns,
   levels,
+  instrumentLabel,
 }: Props) {
   const hasTimeData =
     candles.some(
@@ -64,16 +66,21 @@ export default function CandlestickChart({
   }
 
   const maxPrice = Math.max(
-    ...candles.map((candle) => candle.high)
+    ...candles.map(
+      (candle) => candle.high
+    )
   );
 
   const minPrice = Math.min(
-    ...candles.map((candle) => candle.low)
+    ...candles.map(
+      (candle) => candle.low
+    )
   );
 
   const maxVolume = Math.max(
     ...candles.map(
-      (candle) => candle.volume ?? 0
+      (candle) =>
+        candle.volume ?? 0
     ),
     1
   );
@@ -82,6 +89,7 @@ export default function CandlestickChart({
   const chartTop = 20;
   const chartLeft = 55;
   const chartRight = 970;
+
   const chartWidth =
     chartRight - chartLeft;
 
@@ -93,13 +101,21 @@ export default function CandlestickChart({
         (candles.length - 1)
       : chartWidth / 2;
 
-  const candleBodyWidth = Math.max(
-    3,
-    Math.min(8, candleSpacing * 0.55)
-  );
+  const candleBodyWidth =
+    Math.max(
+      3,
+      Math.min(
+        8,
+        candleSpacing * 0.55
+      )
+    );
 
-  const getX = (index: number) => {
-    if (candles.length === 1) {
+  const getX = (
+    index: number
+  ) => {
+    if (
+      candles.length === 1
+    ) {
       return (
         chartLeft +
         chartWidth / 2
@@ -112,12 +128,16 @@ export default function CandlestickChart({
     );
   };
 
-  const scale = (price: number) => {
+  const scale = (
+    price: number
+  ) => {
     const range =
       maxPrice - minPrice;
 
     if (
-      !Number.isFinite(range) ||
+      !Number.isFinite(
+        range
+      ) ||
       range <= 0
     ) {
       return (
@@ -128,70 +148,113 @@ export default function CandlestickChart({
 
     return (
       chartTop +
-      ((maxPrice - price) /
-        range) *
+      (
+        (maxPrice - price) /
+        range
+      ) *
         chartHeight
     );
   };
 
-  const ema20Points = ema20
-    .map((value, index) => {
-      if (index >= candles.length) {
-        return null;
-      }
+  const ema20Points =
+    ema20
+      .map(
+        (
+          value,
+          index
+        ) => {
+          if (
+            index >=
+            candles.length
+          ) {
+            return null;
+          }
 
-      return `${getX(index)},${scale(
-        value
-      )}`;
-    })
-    .filter(Boolean)
-    .join(" ");
+          return `${getX(
+            index
+          )},${scale(
+            value
+          )}`;
+        }
+      )
+      .filter(Boolean)
+      .join(" ");
 
-  const ema50Points = ema50
-    .map((value, index) => {
-      if (index >= candles.length) {
-        return null;
-      }
+  const ema50Points =
+    ema50
+      .map(
+        (
+          value,
+          index
+        ) => {
+          if (
+            index >=
+            candles.length
+          ) {
+            return null;
+          }
 
-      return `${getX(index)},${scale(
-        value
-      )}`;
-    })
-    .filter(Boolean)
-    .join(" ");
+          return `${getX(
+            index
+          )},${scale(
+            value
+          )}`;
+        }
+      )
+      .filter(Boolean)
+      .join(" ");
 
-const formatTime = (
-  time: string | number | Date
-) => {
-    const date = new Date(time);
+  const formatTime = (
+    time:
+      | string
+      | number
+      | Date
+  ) => {
+    const date =
+      new Date(time);
 
     if (
-      Number.isNaN(date.getTime())
+      Number.isNaN(
+        date.getTime()
+      )
     ) {
       return "";
     }
 
-    return date.toLocaleTimeString(
-      "en-IN",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-        timeZone: "Asia/Kolkata",
-      }
+    return (
+      date.toLocaleTimeString(
+        "en-IN",
+        {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+          timeZone:
+            "Asia/Kolkata",
+        }
+      )
     );
   };
 
   const timeLabelIndexes =
     hasTimeData
-      ? candles.reduce<number[]>(
-          (indexes, candle, index) => {
-            if (candle.time == null) {
+      ? candles.reduce<
+          number[]
+        >(
+          (
+            indexes,
+            candle,
+            index
+          ) => {
+            if (
+              candle.time == null
+            ) {
               return indexes;
             }
 
             const date =
-              new Date(candle.time);
+              new Date(
+                candle.time
+              );
 
             if (
               Number.isNaN(
@@ -205,9 +268,12 @@ const formatTime = (
               date.toLocaleTimeString(
                 "en-IN",
                 {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
+                  hour:
+                    "2-digit",
+                  minute:
+                    "2-digit",
+                  hour12:
+                    false,
                   timeZone:
                     "Asia/Kolkata",
                 }
@@ -216,12 +282,20 @@ const formatTime = (
             const [
               hourText,
               minuteText,
-            ] = timeText.split(":");
+            ] =
+              timeText.split(
+                ":"
+              );
 
             const hour =
-              Number(hourText);
+              Number(
+                hourText
+              );
+
             const minute =
-              Number(minuteText);
+              Number(
+                minuteText
+              );
 
             const isMarketOpen =
               hour === 9 &&
@@ -239,7 +313,9 @@ const formatTime = (
               isHourly ||
               isLast
             ) {
-              indexes.push(index);
+              indexes.push(
+                index
+              );
             }
 
             return indexes;
@@ -258,7 +334,10 @@ const formatTime = (
 
           <h2 className="text-lg font-bold text-white mt-1">
             {hasTimeData
-              ? "NIFTY 50 · 5 Minute · Today"
+              ? `${
+                  instrumentLabel ??
+                  "NIFTY 50"
+                } · 5 Minute · Today`
               : "Candlestick Chart"}
           </h2>
         </div>
@@ -278,70 +357,117 @@ const formatTime = (
         className="w-full h-auto rounded-xl border border-slate-800/80 bg-[#050b14] shadow-inner"
       >
         {Array.from({
-          length: priceLevels,
-        }).map((_, index) => {
-          const price =
-            maxPrice -
-            ((maxPrice - minPrice) /
-              (priceLevels - 1)) *
-              index;
+          length:
+            priceLevels,
+        }).map(
+          (
+            _,
+            index
+          ) => {
+            const price =
+              maxPrice -
+              (
+                (
+                  maxPrice -
+                  minPrice
+                ) /
+                (
+                  priceLevels -
+                  1
+                )
+              ) *
+                index;
 
-          const y =
-            chartTop +
-            (chartHeight /
-              (priceLevels - 1)) *
-              index;
+            const y =
+              chartTop +
+              (
+                chartHeight /
+                (
+                  priceLevels -
+                  1
+                )
+              ) *
+                index;
 
-          return (
-            <g key={index}>
-              <text
-                x={5}
-                y={y}
-                fill="#9ca3af"
-                fontSize="12"
+            return (
+              <g
+                key={
+                  index
+                }
               >
-                {price.toFixed(2)}
-              </text>
+                <text
+                  x={5}
+                  y={y}
+                  fill="#9ca3af"
+                  fontSize="12"
+                >
+                  {price.toFixed(
+                    2
+                  )}
+                </text>
 
-              <line
-                x1={chartLeft}
-                x2={chartRight}
-                y1={y}
-                y2={y}
-                stroke="#1f2937"
-                strokeWidth={1}
-              />
-            </g>
-          );
-        })}
+                <line
+                  x1={
+                    chartLeft
+                  }
+                  x2={
+                    chartRight
+                  }
+                  y1={y}
+                  y2={y}
+                  stroke="#1f2937"
+                  strokeWidth={
+                    1
+                  }
+                />
+              </g>
+            );
+          }
+        )}
 
         {levels.support.map(
-          (price, index) => {
+          (
+            price,
+            index
+          ) => {
             const y =
-              scale(price);
+              scale(
+                price
+              );
 
             return (
               <g
                 key={`support-${index}`}
               >
                 <line
-                  x1={chartLeft}
-                  x2={chartRight}
+                  x1={
+                    chartLeft
+                  }
+                  x2={
+                    chartRight
+                  }
                   y1={y}
                   y2={y}
                   stroke="#22c55e"
-                  strokeWidth={1.5}
+                  strokeWidth={
+                    1.5
+                  }
                   strokeDasharray="6 4"
                 />
 
                 <text
                   x={985}
-                  y={y - 4}
+                  y={
+                    y - 4
+                  }
                   fill="#22c55e"
                   fontSize="12"
                   textAnchor="end"
                 >
-                  S {price.toFixed(2)}
+                  S{" "}
+                  {price.toFixed(
+                    2
+                  )}
                 </text>
               </g>
             );
@@ -349,32 +475,48 @@ const formatTime = (
         )}
 
         {levels.resistance.map(
-          (price, index) => {
+          (
+            price,
+            index
+          ) => {
             const y =
-              scale(price);
+              scale(
+                price
+              );
 
             return (
               <g
                 key={`resistance-${index}`}
               >
                 <line
-                  x1={chartLeft}
-                  x2={chartRight}
+                  x1={
+                    chartLeft
+                  }
+                  x2={
+                    chartRight
+                  }
                   y1={y}
                   y2={y}
                   stroke="#ef4444"
-                  strokeWidth={1.5}
+                  strokeWidth={
+                    1.5
+                  }
                   strokeDasharray="6 4"
                 />
 
                 <text
                   x={985}
-                  y={y - 4}
+                  y={
+                    y - 4
+                  }
                   fill="#ef4444"
                   fontSize="12"
                   textAnchor="end"
                 >
-                  R {price.toFixed(2)}
+                  R{" "}
+                  {price.toFixed(
+                    2
+                  )}
                 </text>
               </g>
             );
@@ -386,7 +528,9 @@ const formatTime = (
             fill="none"
             stroke="#3b82f6"
             strokeWidth={2}
-            points={ema20Points}
+            points={
+              ema20Points
+            }
           />
         )}
 
@@ -395,48 +539,64 @@ const formatTime = (
             fill="none"
             stroke="#f59e0b"
             strokeWidth={2}
-            points={ema50Points}
+            points={
+              ema50Points
+            }
           />
         )}
 
         {patterns.map(
-          (pattern, index) => {
+          (
+            pattern,
+            index
+          ) => {
             const candle =
               candles[
-                pattern.candleIndex
+                pattern
+                  .candleIndex
               ];
 
-            if (!candle) {
+            if (
+              !candle
+            ) {
               return null;
             }
 
-            const x = getX(
-              pattern.candleIndex
-            );
+            const x =
+              getX(
+                pattern
+                  .candleIndex
+              );
 
             const y =
-              scale(candle.high) -
-              35;
+              scale(
+                candle.high
+              ) - 35;
 
-            let icon = "";
+            let icon =
+              "";
 
             switch (
               pattern.type
             ) {
               case "Bullish Engulfing":
-                icon = "🟢";
+                icon =
+                  "🟢";
                 break;
 
               case "Bearish Engulfing":
-                icon = "🔴";
+                icon =
+                  "🔴";
                 break;
 
               case "Hammer":
-                icon = "🔨";
+                icon =
+                  "🔨";
                 break;
 
               case "Doji":
-                icon = "⭐";
+                icon =
+                  "⭐";
                 break;
 
               default:
@@ -445,7 +605,9 @@ const formatTime = (
 
             return (
               <text
-                key={index}
+                key={
+                  index
+                }
                 x={x}
                 y={y}
                 textAnchor="middle"
@@ -459,58 +621,80 @@ const formatTime = (
 
         {signals
           .filter(
-            (signal) =>
+            (
+              signal
+            ) =>
               signal.action !==
                 "WAIT" &&
               signal.confidence >=
                 90
           )
-          .map((signal) => {
-            const candle =
-              candles[
-                signal.candleIndex
-              ];
+          .map(
+            (
+              signal
+            ) => {
+              const candle =
+                candles[
+                  signal
+                    .candleIndex
+                ];
 
-            if (!candle) {
-              return null;
+              if (
+                !candle
+              ) {
+                return null;
+              }
+
+              const x =
+                getX(
+                  signal
+                    .candleIndex
+                );
+
+              const y =
+                scale(
+                  candle.high
+                ) - 15;
+
+              return (
+                <text
+                  key={
+                    signal
+                      .candleIndex
+                  }
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  fontSize="18"
+                >
+                  {signal.action ===
+                  "BUY"
+                    ? "🟢"
+                    : "🔴"}
+                </text>
+              );
             }
-
-            const x = getX(
-              signal.candleIndex
-            );
-
-            const y =
-              scale(candle.high) -
-              15;
-
-            return (
-              <text
-                key={
-                  signal.candleIndex
-                }
-                x={x}
-                y={y}
-                textAnchor="middle"
-                fontSize="18"
-              >
-                {signal.action ===
-                "BUY"
-                  ? "🟢"
-                  : "🔴"}
-              </text>
-            );
-          })}
+          )}
 
         {candles.map(
-          (candle, index) => {
+          (
+            candle,
+            index
+          ) => {
             const x =
-              getX(index);
+              getX(
+                index
+              );
 
             const openY =
-              scale(candle.open);
+              scale(
+                candle.open
+              );
 
             const closeY =
-              scale(candle.close);
+              scale(
+                candle.close
+              );
 
             const bodyTop =
               Math.min(
@@ -521,7 +705,8 @@ const formatTime = (
             const bodyHeight =
               Math.max(
                 Math.abs(
-                  openY - closeY
+                  openY -
+                    closeY
                 ),
                 2
               );
@@ -531,7 +716,11 @@ const formatTime = (
               candle.open;
 
             return (
-              <g key={index}>
+              <g
+                key={
+                  index
+                }
+              >
                 <line
                   x1={x}
                   x2={x}
@@ -542,7 +731,9 @@ const formatTime = (
                     candle.low
                   )}
                   stroke="white"
-                  strokeWidth={1}
+                  strokeWidth={
+                    1
+                  }
                 />
 
                 <rect
@@ -551,7 +742,9 @@ const formatTime = (
                     candleBodyWidth /
                       2
                   }
-                  y={bodyTop}
+                  y={
+                    bodyTop
+                  }
                   width={
                     candleBodyWidth
                   }
@@ -570,17 +763,24 @@ const formatTime = (
         )}
 
         {candles.map(
-          (candle, index) => {
+          (
+            candle,
+            index
+          ) => {
             const x =
-              getX(index);
+              getX(
+                index
+              );
 
             const volume =
-              candle.volume ?? 0;
+              candle.volume ??
+              0;
 
             const barHeight =
-              (volume /
-                maxVolume) *
-              55;
+              (
+                volume /
+                maxVolume
+              ) * 55;
 
             const safeBarHeight =
               Number.isFinite(
@@ -614,32 +814,43 @@ const formatTime = (
                     ? "#22c55e"
                     : "#ef4444"
                 }
-                opacity={0.6}
+                opacity={
+                  0.6
+                }
               />
             );
           }
         )}
 
         {timeLabelIndexes.map(
-          (index) => {
+          (
+            index
+          ) => {
             const candle =
-              candles[index];
+              candles[
+                index
+              ];
 
             if (
-              candle?.time == null
+              candle?.time ==
+              null
             ) {
               return null;
             }
 
             const x =
-              getX(index);
+              getX(
+                index
+              );
 
             const label =
               formatTime(
                 candle.time
               );
 
-            if (!label) {
+            if (
+              !label
+            ) {
               return null;
             }
 
@@ -653,7 +864,9 @@ const formatTime = (
                   y1={420}
                   y2={426}
                   stroke="#64748b"
-                  strokeWidth={1}
+                  strokeWidth={
+                    1
+                  }
                 />
 
                 <text
